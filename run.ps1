@@ -104,23 +104,32 @@ $DistDir         = if ($Config.distDir) { $Config.distDir } else { "dist" }
 # ============================================================================
 # STARTUP GUARD: Validate ExtensionDir exists
 # ============================================================================
-if (-not (Test-Path $ExtensionDir -PathType Container)) {
+$ExtensionDirMissing = [string]::IsNullOrWhiteSpace($ExtensionDir)
+$ExtensionDirNotADir = (-not $ExtensionDirMissing) -and (-not (Test-Path $ExtensionDir -PathType Container))
+if ($ExtensionDirMissing -or $ExtensionDirNotADir) {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Red
     Write-Host "  STARTUP GUARD FAILURE" -ForegroundColor Red
     Write-Host "========================================" -ForegroundColor Red
     Write-Host ""
-    Write-Host "ERROR: Extension directory does not exist:" -ForegroundColor Red
-    Write-Host "  $ExtensionDir" -ForegroundColor Yellow
+    if ($ExtensionDirMissing) {
+        Write-Host "ERROR: Extension directory is null or empty after resolving 'extensionDir'." -ForegroundColor Red
+    } else {
+        Write-Host "ERROR: Extension directory does not exist:" -ForegroundColor Red
+        Write-Host "  $ExtensionDir" -ForegroundColor Yellow
+    }
     Write-Host ""
     Write-Host "Configuration source:" -ForegroundColor Gray
+    Write-Host "  powershell.json:                 $ConfigPath" -ForegroundColor Gray
     Write-Host "  powershell.json -> extensionDir: '$($Config.extensionDir)'" -ForegroundColor Gray
+    Write-Host "  Script dir:                      $ScriptDir" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Resolution steps:" -ForegroundColor Cyan
-    Write-Host "  1. Verify 'extensionDir' in powershell.json points to the correct path" -ForegroundColor White
-    Write-Host "  2. Ensure the directory exists relative to the script location:" -ForegroundColor White
+    Write-Host "  1. Open powershell.json and verify 'extensionDir'." -ForegroundColor White
+    Write-Host "  2. For this repo (extension at root), use:  `"extensionDir`": `".`"" -ForegroundColor White
+    Write-Host "  3. For a sub-folder layout, ensure that folder exists relative to:" -ForegroundColor White
     Write-Host "     $ScriptDir" -ForegroundColor DarkGray
-    Write-Host "  3. For this repo structure, use '.' (current/root directory)" -ForegroundColor White
+    Write-Host "  4. If you edited powershell.json mid-run, re-run .\run.ps1." -ForegroundColor White
     Write-Host ""
     exit 1
 }
