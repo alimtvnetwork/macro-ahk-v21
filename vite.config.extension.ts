@@ -22,8 +22,8 @@ import {
 } from "fs";
 import { execSync } from "node:child_process";
 
-const EXT_DIR = resolve(__dirname, "chrome-extension");
-const DIST_DIR = resolve(EXT_DIR, "dist");
+const EXT_DIR = __dirname;
+const DIST_DIR = resolve(__dirname, "dist");
 
 function resolveDeclaredAssetSource(
     projectRootDir: string,

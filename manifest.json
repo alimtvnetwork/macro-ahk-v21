@@ -1,0 +1,51 @@
+{
+    "manifest_version": 3,
+    "name": "Marco Macro Extension",
+    "version": "2.169.0",
+    "description": "Riseup Asia Marco — macro automation, XPath recording, and prompt management.",
+    "permissions": [
+        "storage",
+        "tabs",
+        "activeTab",
+        "scripting",
+        "cookies",
+        "webNavigation",
+        "alarms",
+        "offscreen",
+        "unlimitedStorage"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background/index.js",
+        "type": "module"
+    },
+    "action": {
+        "default_popup": "src/popup/popup.html",
+        "default_title": "Marco"
+    },
+    "options_page": "src/options/options.html",
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content-scripts/message-relay.js"],
+            "run_at": "document_start",
+            "all_frames": false
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "wasm/sql-wasm.wasm",
+                "build-meta.json",
+                "prompts/macro-prompts.json",
+                "projects/seed-manifest.json",
+                "projects/scripts/*/*",
+                "content-scripts/xpath-recorder.js",
+                "content-scripts/network-reporter.js"
+            ],
+            "matches": ["<all_urls>"]
+        }
+    ]
+}
