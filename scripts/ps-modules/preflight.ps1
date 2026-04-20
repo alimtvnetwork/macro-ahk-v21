@@ -185,3 +185,39 @@ function Invoke-ManifestPreflight {
 
     return $true
 }
+
+<#
+.SYNOPSIS
+    Runs the Node-based manifest permission validator (check-manifest-permissions.mjs).
+.DESCRIPTION
+    Hard-fails the build if any chrome.* API used in src/ is missing its required
+    permission in manifest.json, or if any declared permission is unused.
+    Must run BEFORE any vite build invocation.
+.OUTPUTS
+    Boolean -- $true on pass. Calls `exit 3` directly on failure to abort the build.
+#>
+function Invoke-ManifestPermissionCheck {
+    $permCheckScript = Join-Path $script:ExtensionDir "scripts/check-manifest-permissions.mjs"
+
+    if (-not (Test-Path $permCheckScript)) {
+        Write-Host "  [FAIL] Manifest permission check script missing" -ForegroundColor Red
+        Write-Host "    Path:    $permCheckScript" -ForegroundColor Yellow
+        Write-Host "    Missing: scripts/check-manifest-permissions.mjs" -ForegroundColor Yellow
+        Write-Host "    Reason:  Required preflight cannot run -- permission drift would go undetected." -ForegroundColor Yellow
+        exit 3
+    }
+
+    Write-Host "  Running manifest permission validator..." -ForegroundColor Gray
+    Push-Location $script:ExtensionDir
+    try {
+        node $permCheckScript
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [FAIL] Manifest permission check failed -- aborting build" -ForegroundColor Red
+            exit 3
+        }
+    } finally {
+        Pop-Location
+    }
+
+    return $true
+}

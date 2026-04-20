@@ -146,6 +146,10 @@ function Build-Extension {
     # Must run BEFORE vite to catch missing manifest / version drift early.
     Invoke-ManifestPreflight | Out-Null
 
+    # Hard preflight: chrome.* API usage <-> manifest.json "permissions" sync.
+    # Catches both missing permissions (runtime crashes) and unused ones (bloat).
+    Invoke-ManifestPermissionCheck | Out-Null
+
     # Sourcemap status
     if ($script:nosourcemap) {
         $env:VITE_NO_SOURCEMAP = "1"
