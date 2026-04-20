@@ -7,18 +7,38 @@
  *   2. manifest.json "version" MUST equal EXTENSION_VERSION in src/shared/constants.ts.
  *   3. The version string MUST be a valid Chrome MV3 version (1-4 dot-separated
  *      integers, each 0-65535).
+ *   4. Every chrome.<NAMESPACE> API used in src/ MUST have its corresponding
+ *      permission declared in manifest.json (HARD ERROR — runtime would
+ *      throw TypeError or silently no-op).
  *
- * On failure: prints a CODE RED error block (exact path, what is missing, why)
- * and exits with code 1 to abort the build pipeline.
+ * Soft check (warning only):
+ *   - Permissions declared in manifest.json that have no matching chrome.*
+ *     usage in src/ are reported as warnings. Unused permissions inflate the
+ *     install consent prompt and slow Chrome Web Store review, but do not
+ *     break runtime.
+ *
+ * The strict variant of the permission audit (which fails on unused) lives
+ * in scripts/check-manifest-permissions.mjs. Both share
+ * scripts/lib/manifest-permission-audit.mjs.
+ *
+ * On hard failure: prints a CODE RED error block (exact path, what is missing,
+ * why) and exits with code 1 to abort the build pipeline.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  auditManifestPermissions,
+  printMissingPermissions,
+  printUnusedPermissions,
+} from "./lib/manifest-permission-audit.mjs";
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST_PATH = resolve(ROOT, "manifest.json");
 const CONSTANTS_PATH = resolve(ROOT, "src/shared/constants.ts");
+const SRC_DIR = resolve(ROOT, "src");
 
 /** Prints a CODE RED failure block and exits 1. */
 function fail(title, exactPath, missing, reason) {
@@ -128,4 +148,51 @@ if (manifestVersion !== constantsVersion) {
 console.log(
   `[OK] Manifest preflight: manifest.json + EXTENSION_VERSION = ${manifestVersion}`,
 );
+
+/* 6. Permission audit --------------------------------------------------
+ *    HARD ERROR if a chrome.* API is used in src/ without its permission.
+ *    WARN-ONLY if a declared permission has no chrome.* usage in src/.
+ *    -------------------------------------------------------------------- */
+if (!existsSync(SRC_DIR)) {
+  fail(
+    "src/ directory existence (permission audit)",
+    SRC_DIR,
+    "src/ source root for chrome.* scan",
+    "Permission audit scans src/ for chrome.<namespace> usage. The directory is missing — cannot validate manifest.json permissions.",
+  );
+}
+
+let permissionReport;
+try {
+  permissionReport = auditManifestPermissions({
+    manifestPath: MANIFEST_PATH,
+    srcDir: SRC_DIR,
+    repoRoot: ROOT,
+  });
+} catch (auditErr) {
+  fail(
+    "Permission audit",
+    `${MANIFEST_PATH}  +  ${SRC_DIR}`,
+    "Successful audit of chrome.* usage vs manifest.permissions",
+    `Audit threw: ${auditErr instanceof Error ? auditErr.message : String(auditErr)}`,
+  );
+}
+
+if (printMissingPermissions(permissionReport.missing)) {
+  process.exit(1);
+}
+
+// Unused permissions: WARN only — does not abort the build.
+printUnusedPermissions({
+  unusedHard: permissionReport.unusedHard,
+  unusedSoft: permissionReport.unusedSoft,
+  manifestPath: MANIFEST_PATH,
+  severity: "warn",
+});
+
+const usedApis = [...permissionReport.usage.keys()].sort();
+console.log(
+  `[OK] Manifest permissions: ${permissionReport.declaredPermissions.size} declared, ${usedApis.length} chrome.* namespaces used (${usedApis.join(", ") || "none"})`,
+);
+
 process.exit(0);
