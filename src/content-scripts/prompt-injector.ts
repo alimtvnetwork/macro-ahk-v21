@@ -1,9 +1,25 @@
 /**
  * Marco Extension — Prompt Injector (Content Script)
  *
- * v1.48: Simplified to DOM append approach.
- * Appends a <p> tag with prompt text to the editor — no clipboard strategies.
- * Supports XPath-based and CSS selector editor discovery.
+ * v2.170.0: Refactored to standalone bundle injected via
+ * `chrome.scripting.executeScript({ files: [...] })`. Args are handed off
+ * via `chrome.storage.session` keyed by a correlation ID; the result is
+ * posted back to the background via `chrome.runtime.sendMessage`.
+ *
+ * Bundle activation contract:
+ *   1. Background writes args to `chrome.storage.session` under
+ *      `marco_prompt_args.<correlationId>` (TTL: until consumed).
+ *   2. Background calls `executeScript({ files: ["content-scripts/prompt-injector.js"] })`.
+ *      Chrome may still pass extra metadata via the `world: "ISOLATED"` content-script
+ *      `chrome.scripting.executeScript` API. We rely on session storage instead.
+ *   3. Bundle bootstrap reads ALL pending args, runs `injectPromptText` for each one,
+ *      then posts `{ type: "PROMPT_INJECT_RESULT", correlationId, success, verified, ... }`
+ *      and deletes the consumed key.
+ *
+ * Why pull-all-pending instead of single-key:
+ *   `executeScript({ files })` does not let us pass argv. The content script has no
+ *   way to know its correlation ID at startup. Reading the entire pending queue and
+ *   processing every entry is robust to repeat injection and lost runs.
  */
 
 /* ------------------------------------------------------------------ */
@@ -172,13 +188,23 @@ function triggerSubmit(): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Public API                                                         */
+/*  Public API (still exported for future imports)                     */
 /* ------------------------------------------------------------------ */
 
-export async function injectPromptText(
-    text: string,
-    options?: { autoSubmit?: boolean; submitDelayMs?: number; chatBoxXPath?: string }
-): Promise<{ success: boolean; method: string; verified: boolean; submitted: boolean }> {
+export interface InjectOptions {
+    autoSubmit?: boolean;
+    submitDelayMs?: number;
+    chatBoxXPath?: string;
+}
+
+export interface InjectResult {
+    success: boolean;
+    method: string;
+    verified: boolean;
+    submitted: boolean;
+}
+
+export async function injectPromptText(text: string, options?: InjectOptions): Promise<InjectResult> {
     const editor = findTiptapEditor(options?.chatBoxXPath);
     if (!editor) {
         return { success: false, method: "none", verified: false, submitted: false };
@@ -202,3 +228,103 @@ export async function injectPromptText(
         submitted,
     };
 }
+
+/* ------------------------------------------------------------------ */
+/*  Bootstrap — runs immediately when injected via                     */
+/*  chrome.scripting.executeScript({ files: [...] })                   */
+/* ------------------------------------------------------------------ */
+
+/** Session-storage namespace shared with the background handler. */
+const PROMPT_ARGS_KEY = "marco_prompt_args";
+
+/** Result-message type — handled by an inline one-shot listener in the background. */
+const PROMPT_INJECT_RESULT = "PROMPT_INJECT_RESULT";
+
+interface PendingPromptArgs {
+    text: string;
+    chatBoxXPath?: string;
+    autoSubmit?: boolean;
+    submitDelayMs?: number;
+}
+
+/**
+ * Drains all pending prompt-injection requests from session storage,
+ * runs each one, and posts the result back. Idempotent: if no pending
+ * requests exist, the bootstrap is a no-op (so this bundle is safe to
+ * load statically in the future).
+ */
+async function bootstrap(): Promise<void> {
+    if (typeof chrome === "undefined" || !chrome.storage?.session || !chrome.runtime?.sendMessage) {
+        return;
+    }
+
+    let pending: Record<string, PendingPromptArgs> = {};
+    try {
+        const stored = await chrome.storage.session.get(PROMPT_ARGS_KEY);
+        pending = (stored[PROMPT_ARGS_KEY] as Record<string, PendingPromptArgs> | undefined) ?? {};
+    } catch (err) {
+        console.error(
+            `[Marco] prompt-injector: failed to read session storage\n  Path: chrome.storage.session.${PROMPT_ARGS_KEY}\n  Missing: pending args object\n  Reason: ${err instanceof Error ? err.message : String(err)}`,
+            err,
+        );
+        return;
+    }
+
+    const correlationIds = Object.keys(pending);
+    if (correlationIds.length === 0) return;
+
+    for (const correlationId of correlationIds) {
+        const args = pending[correlationId];
+        let result: InjectResult;
+        try {
+            result = await injectPromptText(args.text, {
+                chatBoxXPath: args.chatBoxXPath,
+                autoSubmit: args.autoSubmit,
+                submitDelayMs: args.submitDelayMs,
+            });
+        } catch (err) {
+            result = {
+                success: false,
+                method: "error",
+                verified: false,
+                submitted: false,
+            };
+            console.error(
+                `[Marco] prompt-injector: injection threw\n  Path: injectPromptText(correlationId=${correlationId})\n  Missing: completed injection\n  Reason: ${err instanceof Error ? err.message : String(err)}`,
+                err,
+            );
+        }
+
+        try {
+            await chrome.runtime.sendMessage({
+                type: PROMPT_INJECT_RESULT,
+                correlationId,
+                ...result,
+            });
+        } catch (err) {
+            // Background may have torn down — no recovery possible.
+            console.error(
+                `[Marco] prompt-injector: failed to post result\n  Path: chrome.runtime.sendMessage(PROMPT_INJECT_RESULT, correlationId=${correlationId})\n  Missing: result delivery to background\n  Reason: ${err instanceof Error ? err.message : String(err)}`,
+                err,
+            );
+        }
+    }
+
+    // Clear consumed args so a subsequent injection starts clean.
+    try {
+        const remaining = await chrome.storage.session.get(PROMPT_ARGS_KEY);
+        const map = (remaining[PROMPT_ARGS_KEY] as Record<string, PendingPromptArgs> | undefined) ?? {};
+        for (const id of correlationIds) delete map[id];
+        if (Object.keys(map).length === 0) {
+            await chrome.storage.session.remove(PROMPT_ARGS_KEY);
+        } else {
+            await chrome.storage.session.set({ [PROMPT_ARGS_KEY]: map });
+        }
+    } catch (err) {
+        console.warn(
+            `[Marco] prompt-injector: failed to clear consumed args (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+        );
+    }
+}
+
+void bootstrap();
