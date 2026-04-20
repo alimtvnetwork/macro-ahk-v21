@@ -18,7 +18,7 @@ The pipeline has two workflows:
 
 | File | What It Covers |
 |------|---------------|
-| [`01-architecture.md`](01-architecture.md) | Project structure, build artifacts, dependency graph |
+| [`01-architecture.md`](01-architecture.md) | Project structure, build artifacts, dependency graph, [`powershell.json`](01-architecture.md#powershelljson-configuration-schema) schema |
 | [`02-ci-workflow.md`](02-ci-workflow.md) | CI pipeline: triggers, steps, concurrency |
 | [`03-release-workflow.md`](03-release-workflow.md) | Release pipeline: versioning, packaging, GitHub Release |
 | [`04-validation-scripts.md`](04-validation-scripts.md) | Pre-build checks (version sync, dependency audit, dist freshness) |
