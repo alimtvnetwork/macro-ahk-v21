@@ -86,7 +86,15 @@ Marco ships alongside an AutoHotkey sidecar that drives keyboard/mouse automatio
 git clone https://github.com/alimtvnetwork/macro-ahk-v21 "macro-ahk"
 ```
 
+Or use the package.json script:
+
+```bash
+pnpm clone:ahk
+```
+
 This creates a `macro-ahk/` folder containing the AHK v2 scripts that pair with the Chrome extension's macro controller.
+
+See `docs/extension-architecture.md` §11 "Companion repositories" for integration details, version coupling, and required folder layout.
 
 ---
 

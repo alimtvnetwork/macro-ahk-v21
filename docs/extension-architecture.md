@@ -19,6 +19,7 @@
 8. [Build-time validation pipeline](#8-build-time-validation-pipeline)
 9. [Change checklist](#9-change-checklist)
 10. [Cross-references](#10-cross-references)
+11. [Companion repositories](#11-companion-repositories)
 
 ---
 
