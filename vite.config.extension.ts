@@ -369,12 +369,9 @@ export default defineConfig(({ mode }) => {
                         src: "node_modules/sql.js/dist/sql-wasm.wasm",
                         dest: "wasm",
                     },
-                    {
-                        src: "dist/prompts/macro-prompts.json",
-                        dest: "prompts",
-                    },
                 ],
             }),
+            copyPrompts(),
             copyManifest(),
             copyIcons(),
             validateNoBackgroundDynamicImport(),
