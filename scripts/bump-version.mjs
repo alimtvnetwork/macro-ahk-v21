@@ -7,6 +7,7 @@
  *   node scripts/bump-version.mjs patch|minor|major
  *
  * Updates ALL version files in one shot:
+ *   - manifest.json                   (version)  ← Chrome extension manifest
  *   - src/shared/constants.ts         (EXTENSION_VERSION)
  *   - standalone-scripts/macro-controller/src/shared-state.ts (VERSION)
  *   - standalone-scripts/macro-controller/src/instruction.ts  (version)
@@ -20,7 +21,7 @@
  *   - CHANGELOG.md              (inserts new version section header)
  *   - plan.md                   (updates Chrome Extension version refs)
  *
- * After running, check-version-sync.mjs will pass.
+ * After running, both check-version-sync.mjs AND check-manifest-version.mjs will pass.
  */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -67,6 +68,15 @@ function resolveVersion(input) {
 /* ── Replacement targets ─────────────────────────────────────── */
 function getTargets(ver) {
   return [
+    {
+      // Chrome extension manifest — top-level "version" field.
+      // Pattern is anchored to the first JSON key so we don't accidentally
+      // match nested fields like minimum_chrome_version.
+      path: "manifest.json",
+      replacements: [
+        { pattern: /("version"\s*:\s*")[\d.]+(")/,         replacement: `$1${ver}$2` },
+      ],
+    },
     {
       path: "src/shared/constants.ts",
       replacements: [
