@@ -16,7 +16,7 @@
 ```
 
 **Root cause:** Not all version files were updated during a bump. The project
-has **7 files** that carry the version string (see [06-versioning.md](06-versioning.md)).
+has multiple files that carry the version string (see [06-versioning.md](06-versioning.md)).
 Missing even one causes `check-version-sync.mjs` to fail.
 
 **Common missed files:**
@@ -25,10 +25,9 @@ Missing even one causes `check-version-sync.mjs` to fail.
 
 **Fix:**
 ```bash
-# Update all 7 files at once
+# Update all version files at once
 sed -i 's/OLD_VERSION/NEW_VERSION/g' \
   src/shared/constants.ts \
-  chrome-extension/manifest.json \
   standalone-scripts/macro-controller/src/shared-state.ts \
   standalone-scripts/macro-controller/src/instruction.ts \
   standalone-scripts/marco-sdk/src/instruction.ts \
@@ -38,7 +37,7 @@ sed -i 's/OLD_VERSION/NEW_VERSION/g' \
 node scripts/compile-instruction.mjs standalone-scripts/macro-controller
 ```
 
-**Prevention:** Always use `pnpm run bump` or update all 7 files in one operation.
+**Prevention:** Always use `pnpm run bump` or update all version files in one operation.
 
 ---
 
@@ -51,16 +50,12 @@ Cannot read properties of undefined (reading 'allowShortCircuit')
 ```
 
 **Root cause:** Version mismatch between `@typescript-eslint/eslint-plugin` and
-`@typescript-eslint/parser`. The chrome-extension subdirectory has its own
-`package.json` and may install incompatible versions.
+`@typescript-eslint/parser`.
 
 **Fix:**
 ```bash
-cd chrome-extension
 pnpm update @typescript-eslint/eslint-plugin @typescript-eslint/parser
 ```
-
-Or pin both to the same major version in `chrome-extension/package.json`.
 
 ---
 
@@ -79,19 +74,6 @@ dependency changes.
 ```yaml
 - name: Install root dependencies
   run: pnpm install --no-frozen-lockfile
-```
-
-For the chrome-extension subdirectory, the workflow conditionally checks:
-```yaml
-- name: Install extension dependencies
-  working-directory: chrome-extension
-  run: |
-    rm -f pnpm-workspace.yaml  # Remove local-only Windows store paths
-    if [ -f pnpm-lock.yaml ]; then
-      pnpm install --frozen-lockfile
-    else
-      pnpm install --no-frozen-lockfile --lockfile=false
-    fi
 ```
 
 ---

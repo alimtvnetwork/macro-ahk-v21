@@ -12,8 +12,6 @@ Ensures the same `MAJOR.MINOR.PATCH` appears in ALL of these files:
 
 | File | How version is extracted |
 |------|------------------------|
-| `chrome-extension/manifest.json` | `"version": "X.Y.Z"` |
-| `chrome-extension/manifest.json` | `"version_name": "X.Y.Z"` |
 | `src/shared/constants.ts` | `EXTENSION_VERSION = "X.Y.Z"` |
 | `standalone-scripts/macro-controller/src/shared-state.ts` | `VERSION = 'X.Y.Z'` |
 | `standalone-scripts/macro-controller/src/instruction.ts` | `version: "X.Y.Z"` |
