@@ -233,6 +233,38 @@ rm -f pnpm-workspace.yaml
 **Prevention:** Add `pnpm-workspace.yaml` to `.gitignore` for subdirectories,
 or never commit workspace configs with absolute paths.
 
+---
+
+## 12. PowerShell `Push-Location` — Extension Directory Not Found
+
+**Error signature:**
+```
+Push-Location: ...\pnpm-config.ps1:19
+Line |
+  19 |      Push-Location $script:ExtensionDir
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot find path '...\chrome-extension' because it does not exist.
+```
+
+**Root cause:** The `extensionDir` path configured in `powershell.json` does not
+exist at runtime. This typically happens when:
+- The repo was cloned without the Chrome extension subfolder
+- `extensionDir` points to a path that was moved or renamed
+- Working in a subdirectory repo (e.g., `macro-ahk`) where the extension is at root (`"extensionDir": "."`)
+
+**Fix:**
+1. Check `powershell.json` — verify `extensionDir` matches your actual layout
+2. See [01-architecture.md#powershelljson-configuration-schema](01-architecture.md#powershelljson-configuration-schema) for path semantics
+3. Common layouts:
+   - Extension at repo root: `"extensionDir": "."`
+   - Extension in subfolder: `"extensionDir": "chrome-extension"`
+
+**Prevention:** The `run.ps1` startup guard validates `$ExtensionDir` before any
+`Push-Location` calls. Ensure `powershell.json` is committed and kept in sync
+with repo structure changes.
+
+---
+
 ## 11. ESLint — `react-refresh/only-export-components` False Positive
 
 **Error signature:**
