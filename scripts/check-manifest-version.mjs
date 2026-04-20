@@ -148,4 +148,51 @@ if (manifestVersion !== constantsVersion) {
 console.log(
   `[OK] Manifest preflight: manifest.json + EXTENSION_VERSION = ${manifestVersion}`,
 );
+
+/* 6. Permission audit --------------------------------------------------
+ *    HARD ERROR if a chrome.* API is used in src/ without its permission.
+ *    WARN-ONLY if a declared permission has no chrome.* usage in src/.
+ *    -------------------------------------------------------------------- */
+if (!existsSync(SRC_DIR)) {
+  fail(
+    "src/ directory existence (permission audit)",
+    SRC_DIR,
+    "src/ source root for chrome.* scan",
+    "Permission audit scans src/ for chrome.<namespace> usage. The directory is missing — cannot validate manifest.json permissions.",
+  );
+}
+
+let permissionReport;
+try {
+  permissionReport = auditManifestPermissions({
+    manifestPath: MANIFEST_PATH,
+    srcDir: SRC_DIR,
+    repoRoot: ROOT,
+  });
+} catch (auditErr) {
+  fail(
+    "Permission audit",
+    `${MANIFEST_PATH}  +  ${SRC_DIR}`,
+    "Successful audit of chrome.* usage vs manifest.permissions",
+    `Audit threw: ${auditErr instanceof Error ? auditErr.message : String(auditErr)}`,
+  );
+}
+
+if (printMissingPermissions(permissionReport.missing)) {
+  process.exit(1);
+}
+
+// Unused permissions: WARN only — does not abort the build.
+printUnusedPermissions({
+  unusedHard: permissionReport.unusedHard,
+  unusedSoft: permissionReport.unusedSoft,
+  manifestPath: MANIFEST_PATH,
+  severity: "warn",
+});
+
+const usedApis = [...permissionReport.usage.keys()].sort();
+console.log(
+  `[OK] Manifest permissions: ${permissionReport.declaredPermissions.size} declared, ${usedApis.length} chrome.* namespaces used (${usedApis.join(", ") || "none"})`,
+);
+
 process.exit(0);
