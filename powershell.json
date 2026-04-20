@@ -2,7 +2,7 @@
   "$schema": "spec/14-imported/12-powershell-integration/schemas/powershell.schema.json",
   "projectName": "Marco Chrome Extension",
   "rootDir": ".",
-  "extensionDir": "chrome-extension",
+  "extensionDir": ".",
   "distDir": "dist",
   "buildCommand": "pnpm run build",
   "devCommand": "pnpm run dev",
