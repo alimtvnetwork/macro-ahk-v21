@@ -10,7 +10,7 @@ The CI pipeline is structured as **6 jobs** with dependency edges:
 
 ```
 ┌──────────┐
-│  setup   │  ← Checkout, lint (root + extension), test
+│  setup   │  ← Checkout, lint (root), test
 └────┬─────┘
      │
      ├─────────────────────┐
@@ -45,9 +45,7 @@ Runs all quality gates before any build work begins.
 | Setup Node.js | `actions/setup-node@v4 (node 20)` | Runtime environment |
 | Setup pnpm | `pnpm/action-setup@v4 (pnpm 9)` | Package manager |
 | Install root deps | `pnpm install --no-frozen-lockfile` | Root workspace packages |
-| Install ext deps | `cd chrome-extension && pnpm install` | Extension-specific packages |
 | Root lint | `pnpm run lint` | ESLint 9 flat config (root) |
-| Extension lint | `cd chrome-extension && pnpm run lint` | ESLint legacy config (extension) |
 | Tests | `pnpm run test` | Vitest single-pass run |
 
 ### 2. `build-sdk` — Marco SDK
@@ -131,39 +129,6 @@ Downstream jobs download these artifacts into the same relative paths before bui
 
 Artifacts have a 1-day retention — they are ephemeral build intermediates only.
 
-## Dependency Installation Notes
-
-**Root** (`/`): Uses `--no-frozen-lockfile` because the lockfile may not exist
-in all environments (Lovable editor doesn't generate one).
-
-**Extension** (`chrome-extension/`): Tries `--frozen-lockfile` first (if lockfile exists),
-falls back to `--no-frozen-lockfile --lockfile=false`. Also removes `pnpm-workspace.yaml`
-which may contain local-only Windows store paths.
-
-## Lint Configuration
-
-Two separate lint passes run in the `setup` job:
-
-### Root Lint (`eslint.config.js` — ESLint 9 flat config)
-- `eslint-plugin-sonarjs` for code quality (cognitive complexity, function size)
-- Zero warnings policy: `--max-warnings 0` enforced
-- Different function-size limits per directory:
-  - Default: 25 lines
-  - React components (`src/components/`, `src/pages/`): 50 lines
-  - Background/hooks/lib: 40 lines
-  - Standalone scripts: 50 lines
-  - Tests: unlimited
-
-### Extension Lint (`chrome-extension/.eslintrc.json` — ESLint legacy config)
-- Type-aware rules (`@typescript-eslint/recommended-requiring-type-checking`)
-- `eslint-plugin-sonarjs`, `eslint-plugin-import`, `eslint-plugin-unicorn`, `eslint-plugin-jsdoc`
-- Strict boolean expressions, explicit return types
-- Architecture enforcement: `import/no-restricted-paths` prevents cross-boundary imports
-- Max 200 lines per file, max 3 params per function, max 25 lines per function
-- Cognitive complexity: max 10
-- Zero warnings: `--max-warnings 0`
-
-## Test Configuration
 
 - Vitest with `vitest run` (single pass, no watch)
 - jsdom environment for DOM-dependent tests
