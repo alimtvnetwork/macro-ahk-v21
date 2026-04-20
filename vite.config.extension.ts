@@ -22,8 +22,8 @@ import {
 } from "fs";
 import { execSync } from "node:child_process";
 
-const EXT_DIR = resolve(__dirname, "chrome-extension");
-const DIST_DIR = resolve(EXT_DIR, "dist");
+const EXT_DIR = __dirname;
+const DIST_DIR = resolve(__dirname, "dist");
 
 function resolveDeclaredAssetSource(
     projectRootDir: string,
@@ -211,6 +211,29 @@ function generateBuildMeta(): Plugin {
     };
 }
 
+/** Re-aggregates prompts AFTER emptyOutDir wipes dist/, then copies into dist/prompts/. */
+function copyPrompts(): Plugin {
+    return {
+        name: "copy-prompts",
+        writeBundle() {
+            try {
+                execSync(
+                    `node scripts/aggregate-prompts.mjs`,
+                    { cwd: __dirname, stdio: "inherit" },
+                );
+                const src = resolve(__dirname, "dist", "prompts", "macro-prompts.json");
+                if (existsSync(src)) {
+                    const destDir = resolve(DIST_DIR, "prompts");
+                    mkdirSync(destDir, { recursive: true });
+                    copyFileSync(src, resolve(destDir, "macro-prompts.json"));
+                }
+            } catch (e) {
+                console.warn("[copy-prompts] failed:", e);
+            }
+        },
+    };
+}
+
 /**
  * Copies compiled standalone scripts into dist/projects/scripts/{project-name}/.
  * Reads each project's dist/instruction.json for asset metadata.
@@ -369,19 +392,16 @@ export default defineConfig(({ mode }) => {
                         src: "node_modules/sql.js/dist/sql-wasm.wasm",
                         dest: "wasm",
                     },
-                    {
-                        src: "dist/prompts/macro-prompts.json",
-                        dest: "prompts",
-                    },
                 ],
             }),
+            copyPrompts(),
             copyManifest(),
             copyIcons(),
             validateNoBackgroundDynamicImport(),
             generateBuildMeta(),
             copyProjectScripts(),
             visualizer({
-                filename: resolve(__dirname, "chrome-extension", "bundle-report.html"),
+                filename: resolve(__dirname, "dist", "bundle-report.html"),
                 template: "treemap",
                 gzipSize: true,
                 brotliSize: false,
