@@ -1,0 +1,18 @@
+{
+  "version": "2.112.0",
+  "branch": "release/v2.112.0",
+  "sourceBranch": "main",
+  "commit": "",
+  "tag": "v2.112.0",
+  "assets": [],
+  "changelog": [
+    "Synced all hardcoded fallback prompt texts with actual prompt.md source files (Unified AI Prompt v4, Issues Tracking, Audit Spec v1 — all had stale/abbreviated text)",
+    "Fixed computeBundledVersion to include text length in hash — text-only changes now trigger DB re-seeding",
+    "Fixed Audit Spec v1 id mismatch: 'default-audit' → 'default-audit-spec' (matching info.json)",
+    "Version bump: 2.111.0 → 2.112.0 (all version files synced)"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-07T21:20:00Z",
+  "isLatest": true
+}

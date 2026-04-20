@@ -1,0 +1,51 @@
+# Memory: index.md
+Updated: 2026-04-20 (session: SQLite bind safety + SDK self-test round-trip)
+
+# Project Memory
+
+## Core
+Rise Up Macro Chrome extension + standalone scripts. Extension v2.166.0.
+Never modify files in `skipped/` folders — read-only archives.
+Never modify `.release/` folder — keep out of reach.
+Version bump (at least minor) on every code change across all version files (manifest, constants.ts, every standalone-script instruction.ts + shared-state.ts + SDK index.ts literals).
+Suggestions: canonical single file at `.lovable/suggestions.md`. Historical archive: `.lovable/memory/suggestions/01-suggestions-tracker.md` (S-001…S-055).
+Plans: canonical single file at `.lovable/plan.md`.
+Engineering standards: 26 rules in `spec/06-coding-guidelines/engineering-standards.md`.
+ESLint SonarJS: zero warnings, zero errors enforced.
+Any bg module using BgLogTag MUST explicitly import it from bg-logger — never rely on implicit availability.
+All ERROR logs MUST include exact file path, what was missing, and reasoning — meaningful enough for AI to diagnose.
+CODE RED: Every file/path error MUST log exact path + missing item + reason. No generic "file not found". No exceptions.
+Dark-only theme enforced — never add light mode or theme toggle.
+Auth token utilities live in SDK (AuthTokenUtils static class on marco.authUtils). Controller delegates to SDK at runtime.
+MV3 suspension errors (context invalidated, receiving end missing) are operational states, not failures — show yellow not red.
+SQLite bind safety: never pass raw `undefined` to db.run/db.exec/stmt.bind — use `bindOpt`/`bindReq` from `handler-guards.ts`. Global Proxy net via `wrapDatabaseWithBindSafety` throws typed `BindError` (param index + column name + SQL preview) if anything slips.
+SDK self-test runs on every page load and now round-trips KV (set→get→verify→delete→verify-cleared); two PASS lines expected in DevTools.
+
+## Memories
+- [Reliability report v4](mem://workflow/07-reliability-risk-report-v4) — AI handoff success at 93%, 1,079 tests, all 8 TS migration phases complete, cross-project sync Phase 1 done
+- [Versioning policy](mem://workflow/version-synchronization-v3) — Unified v2.131.0 across manifest, constants.ts, standalone scripts, xpath
+- [Suggestions convention](mem://workflow/suggestions-convention) — Single-file tracker at .lovable/memory/suggestions/
+- [Skipped folders policy](mem://constraints/skipped-folders) — Never edit skipped/ or .release/ folders
+- [v1.72.3 RCA & Fix Reference](mem://audit/v1.72.3-vs-current-audit-report) — Root cause analysis for broken prompts, injection, next buttons; fix recipes for future regressions
+- [v2.111.0 Large Prompts RCA](mem://audit/v2.111.0-large-prompts-rca) — Root cause: missing from fallback lists + silent normalization filtering
+- [v2.112.0 Stale Prompt Text RCA](mem://audit/v2.112.0-stale-prompt-text-rca) — Root cause: hardcoded fallback texts were stale summaries; computeBundledVersion excluded text length from hash
+- [Sourcemap strategy](mem://architecture/sourcemap-strategy) — Dev (-d) = inline source maps; production (default) = no source maps
+- [Error logging requirements](mem://standards/error-logging-requirements) — All errors must include exact path, missing item, and reasoning for AI diagnosis
+- [File path error logging code-red](mem://constraints/file-path-error-logging-code-red) — CODE RED: every file/path error must log exact path, missing item, reason — no exceptions
+- [Dark-only theme](mem://preferences/dark-only-theme) — Always dark theme, no toggle, reduced overlay opacity (40%)
+- [Rename preset persistence](mem://features/macro-controller/rename-preset-persistence) — Rename presets saved to project-scoped IndexedDB via generic ProjectKvStore, auto-save on Apply/Close
+- [Error modal and default databases](mem://features/error-modal-and-default-dbs) — Reusable ErrorModel, ErrorModal with copy diagnostics, default KV+Meta DBs, namespace stub
+- [Namespace database creation](mem://features/namespace-database-creation) — Dot-separated PascalCase namespaces, System.*/Marco.* reserved, 25 max, inline form
+- [Cross-Project Sync](mem://features/cross-project-sync) — SharedAsset/AssetLink/ProjectGroup tables, migration v7, library handler with sync engine, Phase 1 (data layer) complete
+- [SDK AuthTokenUtils](mem://architecture/sdk-auth-token-utils) — Pure token utilities moved to SDK static class, controller delegates via window.marco.authUtils
+- [Bridge diagnostics MV3](mem://features/macro-controller/bridge-diagnostics-mv3) — MV3 suspension shown as idle (yellow) not failed (red), auto-wake via wakeBridge()
+- [Custom display name](mem://features/macro-controller/custom-display-name) — User-configurable project name in Settings → General, persisted in localStorage, highest priority in title bar
+- [No-retry policy](mem://constraints/no-retry-policy) — NEVER add retry/backoff to cycle/credit/auth. Loop interval is natural retry. Issue #88.
+- [Startup fix v2.137](mem://auth/startup-fix-v2137) — Gate timeout 12s→2s, removed double auth re-entry in startup, migrated root auth surface to getBearerToken
+- [Error message format](mem://standards/error-message-format) — Mandatory structured multi-line format (version + Lookup/Missing/CalledBy/Reason/Cause/Stack) for namespace + runtime errors
+- [Shared SDK namespace types](mem://architecture/shared-sdk-namespace-types) — Global types live in standalone-scripts/types/riseup-namespace.d.ts; per-project shapes via RiseupAsiaProjectBase&lt;TApi, TInternal&gt;
+- [SQLite bind safety](mem://architecture/sqlite-bind-safety) — Four-layer defence (handler-guards entry validation, bindOpt/bindReq coercion, wrapDatabaseWithBindSafety Proxy + typed BindError, message-router → Errors panel hookup). Wired at db-manager + project-db-manager + message-router.
+- [Session 2026-04-20 — SQLite bind safety](mem://workflow/08-session-2026-04-20-sqlite-bind-safety) — v2.162.0→v2.166.0 changelog: handler-guards.ts, sqlite-bind-safety.ts, SDK kv.ts default projectId, self-test KV round-trip.
+- [Session 2026-04-20 — Handler audit v2.167.0](mem://workflow/09-session-2026-04-20-handler-audit-v2167) — prompt/library/updater hardened with handler-guards; 4 of 8 audited handlers were chrome.storage-only.
+- [Session 2026-04-20 — BindError → Errors panel](mem://workflow/10-session-2026-04-20-binderror-into-errors-panel) — v2.168.0: message-router routes BindError through logBgError(SQLITE_BIND_ERROR) so undefined-bind escapes land in the Errors panel with column + SQL preview.
+- [Session 2026-04-20 — SDK self-test FILES + GKV round-trips](mem://workflow/11-session-2026-04-20-self-test-files-gkv-roundtrip) — v2.169.0: self-test now runs three independent async round-trips (KV, FILES via marco.files, GKV via direct sendMessage) with one PASS/FAIL line per surface; backend break on one never masks the others.

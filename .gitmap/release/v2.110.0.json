@@ -1,0 +1,21 @@
+{
+  "version": "2.110.0",
+  "branch": "release/v2.110.0",
+  "sourceBranch": "main",
+  "commit": "ad04f940fc7345659cd4457dade70adf5a8543fd",
+  "tag": "v2.110.0",
+  "assets": [],
+  "changelog": [
+    "README **Installation (End Users)** section with quick-install one-liners for Linux/macOS (`curl | bash`) and Windows (`irm | iex`)",
+    "Cross-platform install scripts: `install-extension.sh` (Bash) and `install-extension.ps1` (PowerShell) with `--version` and `--dir` flags",
+    "Release assets table documenting all `.zip` packages, installer scripts, and metadata files",
+    "Manual install instructions for loading the unpacked extension in Chromium browsers",
+    "Automated prompt parity check test (`prompt-parity-check.test.ts`) ensuring `DEFAULT_PROMPTS` ↔ DB seed stay in sync",
+    "Added missing `Code Coverage Basic`, `Code Coverage Details`, and `Audit Spec v1` entries to both prompt lists",
+    "Version bump: 2.109.0 → 2.110.0 (all version files synced)"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-07T20:42:55Z",
+  "isLatest": false
+}

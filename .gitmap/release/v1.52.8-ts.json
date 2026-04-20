@@ -1,0 +1,12 @@
+{
+  "version": "1.52.8-ts",
+  "branch": "release/v1.52.8-ts",
+  "sourceBranch": "main",
+  "commit": "60bce0163a9855800ff9cd0085b3d340001a1c34",
+  "tag": "v1.52.8-ts",
+  "assets": [],
+  "draft": false,
+  "preRelease": true,
+  "createdAt": "2026-03-21T13:45:02Z",
+  "isLatest": false
+}

@@ -1,0 +1,20 @@
+{
+  "version": "2.111.0",
+  "branch": "release/v2.111.0",
+  "sourceBranch": "main",
+  "commit": "",
+  "tag": "v2.111.0",
+  "assets": [],
+  "changelog": [
+    "Fixed large prompts (Unit Test Issues V2 Enhanced, 5689 chars) not appearing in dropdown — missing from fallback lists",
+    "Added diagnostic warning logs in normalizePromptEntries when entries are silently dropped",
+    "Version number now displayed in startup timing waterfall summary footer",
+    "Defensive integration test for Task Next no-fallback regression",
+    "Prompt parity test updated to 14 entries",
+    "Version bump: 2.110.0 → 2.111.0 (all version files synced)"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-07T21:00:00Z",
+  "isLatest": true
+}
