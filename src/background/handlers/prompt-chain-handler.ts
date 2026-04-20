@@ -94,9 +94,97 @@ export async function handleDeletePromptChain(msg: MessageRequest): Promise<{ is
 
 /**
  * Execute a single chain step.
- * Injects the prompt text into the active tab's editor using the prompt-injector
- * content script, with chunked insertion and 4-strategy fallback.
+ * Injects the prompt text into the active tab's editor by:
+ *   1. Writing args to chrome.storage.session keyed by a correlation ID.
+ *   2. Injecting the standalone prompt-injector bundle via
+ *      chrome.scripting.executeScript({ files: [...] }).
+ *   3. Awaiting a one-shot PROMPT_INJECT_RESULT message back from the bundle.
+ *
+ * The standalone bundle (src/content-scripts/prompt-injector.ts) drains the
+ * session-storage queue, runs the injection, and posts back the result.
+ *
+ * @see spec/11-chrome-extension/91-content-script-injection-strategy-audit.md
  */
+const PROMPT_ARGS_KEY = "marco_prompt_args";
+const PROMPT_INJECT_RESULT = "PROMPT_INJECT_RESULT";
+const PROMPT_INJECT_TIMEOUT_MS = 10_000;
+const PROMPT_INJECTOR_FILE = "content-scripts/prompt-injector.js";
+
+interface PromptInjectResultMessage {
+    type: typeof PROMPT_INJECT_RESULT;
+    correlationId: string;
+    success: boolean;
+    verified: boolean;
+    submitted: boolean;
+    method: string;
+}
+
+interface PendingPromptArgs {
+    text: string;
+    chatBoxXPath?: string;
+    autoSubmit?: boolean;
+    submitDelayMs?: number;
+}
+
+function generateCorrelationId(): string {
+    // crypto.randomUUID is available in MV3 service workers.
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+    return `marco-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function writePendingArgs(correlationId: string, args: PendingPromptArgs): Promise<void> {
+    const stored = await chrome.storage.session.get(PROMPT_ARGS_KEY);
+    const map = (stored[PROMPT_ARGS_KEY] as Record<string, PendingPromptArgs> | undefined) ?? {};
+    map[correlationId] = args;
+    await chrome.storage.session.set({ [PROMPT_ARGS_KEY]: map });
+}
+
+async function clearPendingArg(correlationId: string): Promise<void> {
+    try {
+        const stored = await chrome.storage.session.get(PROMPT_ARGS_KEY);
+        const map = (stored[PROMPT_ARGS_KEY] as Record<string, PendingPromptArgs> | undefined) ?? {};
+        if (!(correlationId in map)) return;
+        delete map[correlationId];
+        if (Object.keys(map).length === 0) {
+            await chrome.storage.session.remove(PROMPT_ARGS_KEY);
+        } else {
+            await chrome.storage.session.set({ [PROMPT_ARGS_KEY]: map });
+        }
+    } catch {
+        // Best-effort cleanup; ignore failures.
+    }
+}
+
+function isPromptResultMessage(value: unknown, correlationId: string): value is PromptInjectResultMessage {
+    if (!value || typeof value !== "object") return false;
+    const msg = value as Record<string, unknown>;
+    return msg.type === PROMPT_INJECT_RESULT && msg.correlationId === correlationId;
+}
+
+/**
+ * Awaits a one-shot result message matching the given correlation ID.
+ * Resolves with the message or rejects on timeout.
+ */
+function awaitInjectResult(correlationId: string): Promise<PromptInjectResultMessage> {
+    return new Promise<PromptInjectResultMessage>((resolve, reject) => {
+        const timeoutHandle = setTimeout(() => {
+            chrome.runtime.onMessage.removeListener(listener);
+            reject(new Error(`Timed out after ${PROMPT_INJECT_TIMEOUT_MS}ms waiting for prompt-injector result`));
+        }, PROMPT_INJECT_TIMEOUT_MS);
+
+        const listener = (message: unknown): void => {
+            if (!isPromptResultMessage(message, correlationId)) return;
+            clearTimeout(timeoutHandle);
+            chrome.runtime.onMessage.removeListener(listener);
+            resolve(message);
+        };
+
+        chrome.runtime.onMessage.addListener(listener);
+    });
+}
+
 export async function handleExecuteChainStep(msg: MessageRequest): Promise<{ isOk: true }> {
     const step = msg as ExecuteChainStepMessage;
 
@@ -115,16 +203,23 @@ export async function handleExecuteChainStep(msg: MessageRequest): Promise<{ isO
     // Fetch the configured chatbox XPath
     const chatBoxXPath = await getChatBoxXPath();
 
-    // Inject the prompt text via content script (append mode — no clearing)
+    const correlationId = generateCorrelationId();
+    const resultPromise = awaitInjectResult(correlationId);
+
     try {
-        const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: injectPromptInPage,
-            args: [resolvedText, chatBoxXPath],
+        await writePendingArgs(correlationId, {
+            text: resolvedText,
+            chatBoxXPath,
         });
 
-        const result = results?.[0]?.result as { success: boolean; verified: boolean } | undefined;
-        if (!result?.success) {
+        await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: [PROMPT_INJECTOR_FILE],
+        });
+
+        const result = await resultPromise;
+
+        if (!result.success) {
             throw new Error("Could not find or inject into the editor — is the chat input visible?");
         }
 
@@ -132,109 +227,14 @@ export async function handleExecuteChainStep(msg: MessageRequest): Promise<{ isO
             logBgWarnError(BgLogTag.MARCO, `Step ${step.stepIndex + 1}: prompt may be truncated`);
         }
 
-        console.log(`[Marco] Step ${step.stepIndex + 1}/${step.totalSteps} complete`);
+        console.log(`[Marco] Step ${step.stepIndex + 1}/${step.totalSteps} complete (method=${result.method})`);
     } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
         logCaughtError(BgLogTag.MARCO, `Chain step ${step.stepIndex + 1} failed`, err);
         throw new Error(`Step ${step.stepIndex + 1} failed: ${reason}`);
+    } finally {
+        await clearPendingArg(correlationId);
     }
 
     return { isOk: true };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Injected function (runs in page context)                           */
-/* ------------------------------------------------------------------ */
-
-/**
- * This function is serialized and injected into the page via chrome.scripting.executeScript.
- * It must be self-contained (no imports).
- *
- * v1.48: Simplified to DOM append — creates a <p> tag and appends it to the editor.
- * No clipboard strategies. Always appends, never replaces.
- */
-// eslint-disable-next-line max-lines-per-function, sonarjs/cognitive-complexity
-function injectPromptInPage(text: string, chatBoxXPath?: string): { success: boolean; verified: boolean } {
-    // XPath-based editor discovery
-    function findByXPath(xpath: string): HTMLElement | null {
-        try {
-            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            const node = result.singleNodeValue;
-            if (!node) return null;
-            let el = node as HTMLElement;
-            while (el && el !== document.body) {
-                if (el.getAttribute?.("contenteditable") === "true" ||
-                    el instanceof HTMLTextAreaElement ||
-                    el instanceof HTMLInputElement) {
-                    return el;
-                }
-                el = el.parentElement as HTMLElement;
-            }
-            return null;
-        } catch {
-            return null;
-        }
-    }
-
-    // Find the editor element — XPath first, then CSS selectors
-    let editor: HTMLElement | null = null;
-
-    if (chatBoxXPath) {
-        editor = findByXPath(chatBoxXPath);
-    }
-
-    if (!editor) {
-        const selectors = [
-            ".tiptap.ProseMirror",
-            ".ProseMirror[contenteditable='true']",
-            "[contenteditable='true'].tiptap",
-            "form [contenteditable='true']",
-            "[role='textbox'][contenteditable='true']",
-            "textarea",
-        ];
-        for (const sel of selectors) {
-            editor = document.querySelector<HTMLElement>(sel);
-            if (editor) break;
-        }
-    }
-    if (!editor) return { success: false, verified: false };
-
-    // Append prompt text using DOM manipulation
-    try {
-        editor.focus();
-
-        if (editor instanceof HTMLTextAreaElement || editor instanceof HTMLInputElement) {
-            const currentVal = editor.value ?? "";
-            const newVal = currentVal + (currentVal.length > 0 ? "\n" : "") + text;
-            const nativeSetter =
-                Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set ??
-                Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-            if (nativeSetter) {
-                nativeSetter.call(editor, newVal);
-            } else {
-                editor.value = newVal;
-            }
-            editor.dispatchEvent(new Event("input", { bubbles: true }));
-            editor.dispatchEvent(new Event("change", { bubbles: true }));
-        } else {
-            // For contenteditable: create <p> and append
-            const p = document.createElement("p");
-            p.textContent = text;
-            editor.appendChild(p);
-            editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
-            // Move cursor to end
-            const sel = window.getSelection();
-            if (sel) {
-                const range = document.createRange();
-                range.selectNodeContents(p);
-                range.collapse(false);
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-        }
-
-        return { success: true, verified: true };
-    } catch {
-        return { success: false, verified: false };
-    }
 }
