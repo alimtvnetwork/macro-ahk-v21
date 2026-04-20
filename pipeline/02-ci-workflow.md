@@ -40,13 +40,17 @@ Runs all quality gates before any build work begins.
 
 | Step | Command | Purpose |
 |------|---------|---------|
-| Checkout | `actions/checkout@v4 (fetch-depth: 0)` | Full history for changelog generation |
+| Checkout | `actions/checkout@v4 (fetch-depth: 1)` | Shallow clone — saves bandwidth |
 | Enforce lowercase .md | `find + grep` | Block uppercase `.md` filenames |
 | Setup Node.js | `actions/setup-node@v4 (node 20)` | Runtime environment |
-| Setup pnpm | `pnpm/action-setup@v4 (pnpm 9)` | Package manager |
-| Install root deps | `pnpm install --no-frozen-lockfile` | Root workspace packages |
+| Setup pnpm | `pnpm/action-setup@v4 (pnpm 9, run_install: false)` | Package manager (no auto-install — caches run first) |
+| Cache pnpm store | `actions/cache@v4` keyed on lockfile | Content-addressable store reuse across runs |
+| Cache node_modules | `actions/cache@v4` keyed on lockfile | Skip install entirely on cache hit |
+| Install root deps | `pnpm install --prefer-offline --no-frozen-lockfile` | Network-free when cached |
 | Root lint | `pnpm run lint` | ESLint 9 flat config (root) |
 | Tests | `pnpm run test` | Vitest single-pass run |
+
+**Cache strategy**: Every job caches both the pnpm content-addressable store (`$(pnpm store path)`) and `node_modules` keyed on `pnpm-lock.yaml` + `package-lock.json` hash. Cached runs install in ~10 seconds vs ~2 minutes cold. Each job uses a unique `nm-<job>-` cache key prefix to avoid races, with a shared `nm-<job>-` restore-key fallback. The bundle visualizer in `vite.config.extension.ts` is now gated behind `ANALYZE=1` so default builds skip generating `bundle-report.html`.
 
 ### 2. `build-sdk` — Marco SDK
 
