@@ -3,9 +3,8 @@
  * Version Sync Check
  *
  * Ensures every file that carries a version string declares the same
- * MAJOR.MINOR.PATCH value.  Covers the extension manifest, shared
- * constants, macro-controller source & dist, seed-manifest, and the
- * About section UI.
+ * MAJOR.MINOR.PATCH value.  Covers shared constants, macro-controller
+ * source & dist, and standalone script instructions.
  * Exit 1 on mismatch so CI / pre-commit can catch drift.
  */
 
@@ -16,22 +15,6 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const files = [
-  {
-    label: "manifest.json version",
-    path: "chrome-extension/manifest.json",
-    extract: (txt) => {
-      const m = txt.match(/"version"\s*:\s*"(\d+\.\d+\.\d+)"/);
-      return m ? m[1] : null;
-    },
-  },
-  {
-    label: "manifest.json version_name",
-    path: "chrome-extension/manifest.json",
-    extract: (txt) => {
-      const m = txt.match(/"version_name"\s*:\s*"(\d+\.\d+\.\d+)"/);
-      return m ? m[1] : null;
-    },
-  },
   {
     label: "constants.ts",
     path: "src/shared/constants.ts",

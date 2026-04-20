@@ -7,7 +7,6 @@
  *   node scripts/bump-version.mjs patch|minor|major
  *
  * Updates ALL version files in one shot:
- *   - chrome-extension/manifest.json  (version + version_name)
  *   - src/shared/constants.ts         (EXTENSION_VERSION)
  *   - standalone-scripts/macro-controller/src/shared-state.ts (VERSION)
  *   - standalone-scripts/macro-controller/src/instruction.ts  (version)
@@ -30,12 +29,12 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/* ── Parse current version from manifest ─────────────────────── */
+/* ── Parse current version from constants.ts ─────────────────── */
 function getCurrentVersion() {
-  const manifest = JSON.parse(
-    readFileSync(resolve(ROOT, "chrome-extension/manifest.json"), "utf-8"),
-  );
-  return manifest.version;
+  const constants = readFileSync(resolve(ROOT, "src/shared/constants.ts"), "utf-8");
+  const m = constants.match(/EXTENSION_VERSION\s*=\s*"(\d+\.\d+\.\d+)"/);
+  if (!m) throw new Error("Cannot parse EXTENSION_VERSION from src/shared/constants.ts");
+  return m[1];
 }
 
 /* ── Resolve target version ──────────────────────────────────── */
@@ -68,13 +67,6 @@ function resolveVersion(input) {
 /* ── Replacement targets ─────────────────────────────────────── */
 function getTargets(ver) {
   return [
-    {
-      path: "chrome-extension/manifest.json",
-      replacements: [
-        { pattern: /("version"\s*:\s*")[\d.]+(")/,         replacement: `$1${ver}$2` },
-        { pattern: /("version_name"\s*:\s*")[\d.]+(")/,    replacement: `$1${ver}$2` },
-      ],
-    },
     {
       path: "src/shared/constants.ts",
       replacements: [
@@ -215,8 +207,8 @@ function updateChangelog(oldV, newV) {
   }
 
   const insertAt = firstSepIdx + "\n---\n".length;
-  const updated = content.slice(0, insertAt) + "\n" + newSection + content.slice(insertAt);
-  writeFileSync(changelogPath, updated, "utf-8");
+  const updatedContent = content.slice(0, insertAt) + "\n" + newSection + content.slice(insertAt);
+  writeFileSync(changelogPath, updatedContent, "utf-8");
   console.log(`  [OK]   CHANGELOG.md (inserted v${newV} section)`);
   return true;
 }

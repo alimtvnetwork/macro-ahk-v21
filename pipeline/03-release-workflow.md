@@ -91,8 +91,8 @@ All artifacts have 1-day retention.
 Source maps are **never shipped in release assets**. This is enforced at three levels:
 
 1. **Build config** — `vite.config.extension.ts` sets `sourcemap: false` in production mode
-2. **Verification gate** — After build, the workflow scans `chrome-extension/dist` for `.map` files and **fails the pipeline** if any are found
-3. **Safety-net deletion** — Before packaging, the workflow runs `find chrome-extension/dist -name '*.map' -delete`, logging the count of removed files
+2. **Verification gate** — After build, the workflow scans the output `dist/` for `.map` files and **fails the pipeline** if any are found
+3. **Safety-net deletion** — Before packaging, the workflow removes any stray `.map` files from the build output
 
 Standalone scripts (SDK, XPath, Macro Controller) also default to `sourcemap: false` in production mode via their respective Vite configs.
 
