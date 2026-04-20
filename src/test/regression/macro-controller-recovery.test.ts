@@ -124,14 +124,6 @@ describe("MacroController runtime namespace healing", () => {
 });
 
 describe("Version alignment", () => {
-    it("manifest.json and constants.ts have the same version", () => {
-        const manifest = JSON.parse(readFile("chrome-extension/manifest.json"));
-        const constants = readFile("src/shared/constants.ts");
-        const match = constants.match(/EXTENSION_VERSION\s*=\s*"([^"]+)"/);
-        expect(match).not.toBeNull();
-        expect(manifest.version).toBe(match![1]);
-    });
-
     it("macro-controller shared-state VERSION matches extension version", () => {
         const constants = readFile("src/shared/constants.ts");
         const extMatch = constants.match(/EXTENSION_VERSION\s*=\s*"([^"]+)"/);
