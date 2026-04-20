@@ -400,13 +400,17 @@ export default defineConfig(({ mode }) => {
             validateNoBackgroundDynamicImport(),
             generateBuildMeta(),
             copyProjectScripts(),
-            visualizer({
-                filename: resolve(__dirname, "dist", "bundle-report.html"),
-                template: "treemap",
-                gzipSize: true,
-                brotliSize: false,
-            }) as unknown as Plugin,
-        ],
+            // Bundle visualizer — gated behind ANALYZE=1 to keep dist/ slim.
+            // Run `ANALYZE=1 pnpm run build:extension` to generate bundle-report.html.
+            process.env.ANALYZE === "1"
+                ? (visualizer({
+                      filename: resolve(__dirname, "dist", "bundle-report.html"),
+                      template: "treemap",
+                      gzipSize: true,
+                      brotliSize: false,
+                  }) as unknown as Plugin)
+                : null,
+        ].filter(Boolean) as Plugin[],
         build: {
             outDir: DIST_DIR,
             emptyOutDir: true,
