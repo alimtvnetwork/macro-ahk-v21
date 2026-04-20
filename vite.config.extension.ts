@@ -381,7 +381,7 @@ export default defineConfig(({ mode }) => {
             generateBuildMeta(),
             copyProjectScripts(),
             visualizer({
-                filename: resolve(__dirname, "chrome-extension", "bundle-report.html"),
+                filename: resolve(__dirname, "dist", "bundle-report.html"),
                 template: "treemap",
                 gzipSize: true,
                 brotliSize: false,
