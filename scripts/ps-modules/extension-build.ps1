@@ -142,6 +142,10 @@ function Install-RootBuildDependencies([string]$RootDir) {
 function Build-Extension {
     Write-Host "[3/4] Building extension..." -ForegroundColor Yellow
 
+    # Hard preflight: manifest.json existence + version sync with EXTENSION_VERSION.
+    # Must run BEFORE vite to catch missing manifest / version drift early.
+    Invoke-ManifestPreflight | Out-Null
+
     # Sourcemap status
     if ($script:nosourcemap) {
         $env:VITE_NO_SOURCEMAP = "1"
