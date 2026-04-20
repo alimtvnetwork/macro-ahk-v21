@@ -14,6 +14,8 @@
     Runs inside $ExtensionDir with --ignore-workspace to avoid workspace leakage.
 #>
 function Configure-PnpmStore {
+    Assert-ExtensionDirExists -CallerName "Configure-PnpmStore"
+
     Write-Host "  Configuring pnpm store: $script:PnpmStorePath" -ForegroundColor Gray
 
     Push-Location $script:ExtensionDir
@@ -38,6 +40,8 @@ function Configure-PnpmStore {
     .npmrc with the correct settings and only writes if content changed.
 #>
 function Configure-PnpMode {
+    Assert-ExtensionDirExists -CallerName "Configure-PnpMode"
+
     $projectDrive = Get-DriveRoot $script:ExtensionDir
     $storeDrive = Get-DriveRoot $script:PnpmStorePath
     $isCrossDrive = -not [string]::IsNullOrWhiteSpace($projectDrive) -and -not [string]::IsNullOrWhiteSpace($storeDrive) -and ($projectDrive -ne $storeDrive)
