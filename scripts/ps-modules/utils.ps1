@@ -131,7 +131,7 @@ function Get-PnpmMajorVersion([string]$Version) {
     Injects --ignore-workspace into a pnpm command if not already present.
 .DESCRIPTION
     Prevents pnpm workspace resolution from leaking parent-level dependencies
-    into the chrome-extension/ sub-project build.
+    into the extension build (path configured via powershell.json -> extensionDir).
 .PARAMETER BaseCommand
     The raw pnpm command string from powershell.json.
 #>

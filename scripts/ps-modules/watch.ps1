@@ -3,8 +3,9 @@
     File system watch mode for continuous rebuild.
 
 .DESCRIPTION
-    Watches chrome-extension/src/ for file changes and triggers rebuilds
-    with configurable debounce. Optionally re-deploys after each rebuild.
+    Watches the extension's src/ folder (resolved from powershell.json -> extensionDir)
+    for file changes and triggers rebuilds with configurable debounce.
+    Optionally re-deploys after each rebuild.
 #>
 
 <#
