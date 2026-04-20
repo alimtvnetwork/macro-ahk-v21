@@ -40,25 +40,29 @@ The four scripts split cleanly along this matrix:
 
 ### 1. `prompt-injector.js`
 
-**Source:** `src/content-scripts/prompt-injector.ts` (204 lines)
+**Source:** `src/content-scripts/prompt-injector.ts`
+**Bundle entry:** `vite.config.extension.ts` rollup input `content-scripts/prompt-injector` → emits `chrome-extension/dist/content-scripts/prompt-injector.js`.
 
-**Trigger:**
+**Trigger (v2.170.0+):**
 ```ts
-// src/background/handlers/prompt-chain-handler.ts:120
-const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: injectPromptInPage,
-    args: [resolvedText, chatBoxXPath],
+// src/background/handlers/prompt-chain-handler.ts
+await chrome.storage.session.set({
+    [PROMPT_ARGS_KEY]: { [correlationId]: { text, chatBoxXPath } },
 });
+await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ["content-scripts/prompt-injector.js"],
+});
+const result = await awaitInjectResult(correlationId); // one-shot onMessage listener, 10s timeout
 ```
+
+**Args / result handoff:** `executeScript({ files })` cannot pass arguments. Args are written to `chrome.storage.session.marco_prompt_args[<correlationId>]` and the bundle drains the queue on bootstrap. Results are posted back via `chrome.runtime.sendMessage({ type: "PROMPT_INJECT_RESULT", correlationId, success, verified, submitted, method })` — the handler's inline one-shot listener resolves with a 10s timeout. The `finally` block clears the pending arg even on success/failure/timeout to keep session storage clean.
 
 **Why dynamic:**
 1. **User-initiated only** — runs the moment the user presses "Run Chain". No reason to be present before that.
 2. **Active-tab-scoped** — only the focused tab needs it; static injection would put it in 50+ tabs simultaneously.
 3. **No `document_start` requirement** — the editor DOM must already exist; running early would just no-op.
-4. **Captures result** — `executeScript` returns `{ success, verified }` from the page. Static content scripts cannot return values to the background.
-
-**Note:** The `prompt-injector.js` file is built by Vite (see `vite.config.extension.ts:430`) and listed in `manifest.json` `web_accessible_resources` so it can be `import()`-ed by other content scripts in the future. Today the implementation is inlined into `prompt-chain-handler.ts`'s `injectPromptInPage` function for self-contained execution. Keeping the standalone bundle preserves the option for future `files: [...]` injection without re-architecting.
+4. **Captures result** — bundle posts `{success, verified, submitted, method}` back via `chrome.runtime.sendMessage`. Static content scripts cannot return values to the background.
 
 ---
 

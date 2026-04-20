@@ -443,6 +443,10 @@ export default defineConfig(({ mode }) => {
                         __dirname,
                         "src/content-scripts/message-relay.ts",
                     ),
+                    "content-scripts/prompt-injector": resolve(
+                        __dirname,
+                        "src/content-scripts/prompt-injector.ts",
+                    ),
                 },
                 output: {
                     entryFileNames: "[name].js",
