@@ -252,29 +252,59 @@ Before changing **any** of the following, re-read this doc and update it:
 
 ---
 
-## 10. Cross-references
+## 11. Companion repositories
 
-**Specs (full architecture):**
-- `spec/11-chrome-extension/91-content-script-injection-strategy-audit.md` — full per-script audit with rationale
-- `spec/11-chrome-extension/05-content-script-adaptation.md` — overall content-script architecture
-- `spec/11-chrome-extension/42-user-script-logging-and-data-bridge.md` — `message-relay` protocol
-- `spec/11-chrome-extension/43-macro-controller-extension-bridge.md` — `window.postMessage` contract
-- `spec/11-chrome-extension/45-prompt-manager-crud.md` — prompt-chain feature
+### macro-ahk — AutoHotkey sidecar
 
-**Memory (rules — never re-litigate):**
-- `mem://architecture/content-script-injection-strategy` — split between `message-relay` (static) and the rest (dynamic)
-- `mem://architecture/message-relay-system` — 3-tier extension-to-page communication
-- `mem://architecture/script-injection-lifecycle` — full 7-stage injection lifecycle
-- `mem://architecture/data-storage-layers` — 4-tier storage architecture
-- `mem://architecture/repo-size-reduction` — CI caching + visualizer gating
+Marco ships alongside an AutoHotkey v2 sidecar that drives keyboard/mouse automation on Windows. The extension communicates with AHK scripts via `window.postMessage` bridges for native OS automation that Chrome extensions cannot perform directly.
 
-**Validators (executable contracts):**
-- `scripts/check-manifest-version.mjs`
-- `scripts/check-manifest-permissions.mjs`
-- `scripts/bump-version.mjs` — single-shot atomic version bump
+**Repository:** `https://github.com/alimtvnetwork/macro-ahk-v21`  
+**Clone command:**
 
-**Build orchestration:**
-- `package.json` — `build:extension` script chain
-- `scripts/ps-modules/preflight.ps1` — `Invoke-ManifestPreflight`, `Invoke-ManifestPermissionCheck`
-- `scripts/ps-modules/extension-build.ps1` — `Build-Extension` job
-- `vite.config.extension.ts` — rollup inputs and bundle layout
+```bash
+git clone https://github.com/alimtvnetwork/macro-ahk-v21 "macro-ahk"
+```
+
+Or via package.json script:
+
+```bash
+pnpm clone:ahk
+```
+
+**Required folder layout:**
+
+The `macro-ahk/` folder must sit adjacent to this repository root:
+
+```
+marco-extension/          # This Chrome extension repo
+├── chrome-extension/
+├── standalone-scripts/
+├── docs/
+└── ...
+
+macro-ahk/                # Clone target (sidecar)
+├── scripts/
+├── lib/
+└── ...
+```
+
+**What the sidecar does:**
+
+| Function | Purpose |
+|----------|---------|
+| Keyboard simulation | Sends keystrokes to target applications |
+| Mouse automation | Clicks, drags, scrolls outside browser context |
+| Window management | Activates, resizes, positions desktop windows |
+| Clipboard bridge | Synchronizes clipboard between browser and OS |
+| File I/O | Reads/writes local files beyond browser sandbox |
+
+**Integration point:**
+
+The `macro-looping.js` controller (via `standalone-scripts/macro-controller`) detects the AHK sidecar presence through a `window.postMessage` handshake on `localhost:8787` (configurable). If the sidecar responds with the correct protocol version, macro chains can include `AHK.*` actions that serialize to the sidecar for execution.
+
+**Version coupling:**
+
+- Extension v2.170.0+ requires AHK sidecar v21.x (macro-ahk-v21 branch)
+- Mismatched versions log a warning but do not block core browser automation
+
+See also: `readme.md` §"Companion Repositories" for contributor setup instructions.
