@@ -184,3 +184,56 @@ function Resolve-RelativePath($Path) {
     }
     return Join-Path $script:ScriptDir $Path
 }
+
+<#
+.SYNOPSIS
+    Defensive guard: aborts with a clear error if $script:ExtensionDir is missing.
+.DESCRIPTION
+    Mirrors the startup guard in run.ps1 but runs at the point of use (e.g. before
+    Push-Location inside ps-modules). This catches the case where the startup
+    guard was bypassed — for example when powershell.json was edited after script
+    load, when a stale build/ps-modules copy is dot-sourced, or when $script:
+    scope didn't propagate as expected.
+.PARAMETER CallerName
+    Name of the calling function (for error context).
+#>
+function Assert-ExtensionDirExists {
+    param([string]$CallerName = "ps-module")
+
+    $configuredValue = if ($null -ne $script:Config -and $null -ne $script:Config.extensionDir) {
+        $script:Config.extensionDir
+    } else { "<unset>" }
+
+    if ([string]::IsNullOrWhiteSpace($script:ExtensionDir)) {
+        Write-Host ""
+        Write-Host "========================================" -ForegroundColor Red
+        Write-Host "  EXTENSION DIR GUARD FAILURE ($CallerName)" -ForegroundColor Red
+        Write-Host "========================================" -ForegroundColor Red
+        Write-Host "ERROR: `$script:ExtensionDir is null or empty." -ForegroundColor Red
+        Write-Host "  powershell.json -> extensionDir: '$configuredValue'" -ForegroundColor Gray
+        Write-Host "  Script dir:                      '$script:ScriptDir'" -ForegroundColor Gray
+        Write-Host "Fix: set 'extensionDir' in powershell.json to '.' (repo root) or a valid sub-folder." -ForegroundColor Yellow
+        exit 1
+    }
+
+    if (-not (Test-Path $script:ExtensionDir -PathType Container)) {
+        Write-Host ""
+        Write-Host "========================================" -ForegroundColor Red
+        Write-Host "  EXTENSION DIR GUARD FAILURE ($CallerName)" -ForegroundColor Red
+        Write-Host "========================================" -ForegroundColor Red
+        Write-Host "ERROR: Extension directory does not exist:" -ForegroundColor Red
+        Write-Host "  $script:ExtensionDir" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Configuration source:" -ForegroundColor Gray
+        Write-Host "  powershell.json -> extensionDir: '$configuredValue'" -ForegroundColor Gray
+        Write-Host "  Script dir:                      '$script:ScriptDir'" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "Resolution:" -ForegroundColor Cyan
+        Write-Host "  1. Open powershell.json and verify 'extensionDir'." -ForegroundColor White
+        Write-Host "  2. For this repo (extension at root), use:  `"extensionDir`": `".`"" -ForegroundColor White
+        Write-Host "  3. If you edited powershell.json mid-run, re-run .\run.ps1." -ForegroundColor White
+        Write-Host "  4. If a stale build/ps-modules exists, delete it so scripts/ps-modules is used." -ForegroundColor White
+        Write-Host ""
+        exit 1
+    }
+}
