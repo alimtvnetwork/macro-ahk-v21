@@ -211,6 +211,29 @@ function generateBuildMeta(): Plugin {
     };
 }
 
+/** Re-aggregates prompts AFTER emptyOutDir wipes dist/, then copies into dist/prompts/. */
+function copyPrompts(): Plugin {
+    return {
+        name: "copy-prompts",
+        writeBundle() {
+            try {
+                execSync(
+                    `node scripts/aggregate-prompts.mjs`,
+                    { cwd: __dirname, stdio: "inherit" },
+                );
+                const src = resolve(__dirname, "dist", "prompts", "macro-prompts.json");
+                if (existsSync(src)) {
+                    const destDir = resolve(DIST_DIR, "prompts");
+                    mkdirSync(destDir, { recursive: true });
+                    copyFileSync(src, resolve(destDir, "macro-prompts.json"));
+                }
+            } catch (e) {
+                console.warn("[copy-prompts] failed:", e);
+            }
+        },
+    };
+}
+
 /**
  * Copies compiled standalone scripts into dist/projects/scripts/{project-name}/.
  * Reads each project's dist/instruction.json for asset metadata.
