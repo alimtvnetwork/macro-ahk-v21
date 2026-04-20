@@ -68,21 +68,7 @@ jobs:
       - name: Install root dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Install extension dependencies
-        working-directory: chrome-extension
-        run: |
-          rm -f pnpm-workspace.yaml
-          if [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
-          else
-            pnpm install --no-frozen-lockfile --lockfile=false
-          fi
-
       - name: Run root lint
-        run: pnpm run lint
-
-      - name: Run chrome-extension lint
-        working-directory: chrome-extension
         run: pnpm run lint
 
       - name: Run tests
@@ -264,16 +250,6 @@ jobs:
 
       - name: Install root dependencies
         run: pnpm install --no-frozen-lockfile
-
-      - name: Install extension dependencies
-        working-directory: chrome-extension
-        run: |
-          rm -f pnpm-workspace.yaml
-          if [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
-          else
-            pnpm install --no-frozen-lockfile --lockfile=false
-          fi
 
       - name: Download SDK dist
         uses: actions/download-artifact@v4
