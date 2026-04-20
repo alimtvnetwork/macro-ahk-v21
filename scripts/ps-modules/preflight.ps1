@@ -149,3 +149,39 @@ function Invoke-PreflightCheck {
 
     return $preflightPass
 }
+
+<#
+.SYNOPSIS
+    Runs the Node-based manifest preflight (check-manifest-version.mjs).
+.DESCRIPTION
+    Hard-fails the build if manifest.json is missing at the repo root or its
+    "version" does not match EXTENSION_VERSION in src/shared/constants.ts.
+    Must run BEFORE any vite build invocation.
+.OUTPUTS
+    Boolean — $true on pass. Calls `exit 3` directly on failure to abort the build.
+#>
+function Invoke-ManifestPreflight {
+    $manifestCheckScript = Join-Path $script:ExtensionDir "scripts/check-manifest-version.mjs"
+
+    if (-not (Test-Path $manifestCheckScript)) {
+        Write-Host "  [FAIL] Manifest preflight script missing" -ForegroundColor Red
+        Write-Host "    Path:    $manifestCheckScript" -ForegroundColor Yellow
+        Write-Host "    Missing: scripts/check-manifest-version.mjs" -ForegroundColor Yellow
+        Write-Host "    Reason:  Required preflight cannot run -- manifest version drift would go undetected." -ForegroundColor Yellow
+        exit 3
+    }
+
+    Write-Host "  Running manifest preflight..." -ForegroundColor Gray
+    Push-Location $script:ExtensionDir
+    try {
+        node $manifestCheckScript
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [FAIL] Manifest preflight failed -- aborting build" -ForegroundColor Red
+            exit 3
+        }
+    } finally {
+        Pop-Location
+    }
+
+    return $true
+}
