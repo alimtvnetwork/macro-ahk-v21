@@ -5,7 +5,7 @@
 .DESCRIPTION
     Handles dependency installation, extension Vite build, and post-build
     manifest path validation. Orchestrates the install -> build -> validate
-    pipeline for the chrome-extension/ sub-project.
+    pipeline for the extension project (path configured via powershell.json -> extensionDir).
 #>
 
 <#
