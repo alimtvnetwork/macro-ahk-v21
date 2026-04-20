@@ -14,6 +14,8 @@
     Runs inside $ExtensionDir with --ignore-workspace to avoid workspace leakage.
 #>
 function Configure-PnpmStore {
+    Assert-ExtensionDirExists -CallerName "Configure-PnpmStore"
+
     Write-Host "  Configuring pnpm store: $script:PnpmStorePath" -ForegroundColor Gray
 
     Push-Location $script:ExtensionDir
