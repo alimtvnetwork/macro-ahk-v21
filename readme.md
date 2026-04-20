@@ -78,6 +78,18 @@ Works in **Chrome**, **Edge**, **Brave**, **Arc**, and other Chromium browsers.
 
 ---
 
+## Companion Repositories
+
+Marco ships alongside an AutoHotkey sidecar that drives keyboard/mouse automation on Windows. Clone it next to this repo:
+
+```bash
+git clone https://github.com/alimtvnetwork/macro-ahk-v21 "macro-ahk"
+```
+
+This creates a `macro-ahk/` folder containing the AHK v2 scripts that pair with the Chrome extension's macro controller.
+
+---
+
 ## What It Does
 
 Marco is a Chrome extension that automates workspace management workflows through injectable scripts. It operates by injecting standalone JavaScript modules into web pages, controlled by a popup UI and a background service worker.
