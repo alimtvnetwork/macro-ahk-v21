@@ -100,6 +100,31 @@ $ProjectName     = if ($Config.projectName) { $Config.projectName } else { "Chro
 $RootDir         = Resolve-RelativePath $Config.rootDir
 $ExtensionDir    = Resolve-RelativePath $Config.extensionDir
 $DistDir         = if ($Config.distDir) { $Config.distDir } else { "dist" }
+
+# ============================================================================
+# STARTUP GUARD: Validate ExtensionDir exists
+# ============================================================================
+if (-not (Test-Path $ExtensionDir -PathType Container)) {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host "  STARTUP GUARD FAILURE" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "ERROR: Extension directory does not exist:" -ForegroundColor Red
+    Write-Host "  $ExtensionDir" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Configuration source:" -ForegroundColor Gray
+    Write-Host "  powershell.json -> extensionDir: '$($Config.extensionDir)'" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Resolution steps:" -ForegroundColor Cyan
+    Write-Host "  1. Verify 'extensionDir' in powershell.json points to the correct path" -ForegroundColor White
+    Write-Host "  2. Ensure the directory exists relative to the script location:" -ForegroundColor White
+    Write-Host "     $ScriptDir" -ForegroundColor DarkGray
+    Write-Host "  3. For this repo structure, use '.' (current/root directory)" -ForegroundColor White
+    Write-Host ""
+    exit 1
+}
+
 $BuildCommand    = if ($Config.buildCommand) { $Config.buildCommand } else { "npm run build" }
 $DevCommand      = if ($Config.devCommand) { $Config.devCommand } else { "npm run dev" }
 $InstallCommand  = if ($Config.installCommand) { $Config.installCommand } else { "npm install" }
