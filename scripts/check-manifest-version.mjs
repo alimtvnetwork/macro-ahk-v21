@@ -7,18 +7,38 @@
  *   2. manifest.json "version" MUST equal EXTENSION_VERSION in src/shared/constants.ts.
  *   3. The version string MUST be a valid Chrome MV3 version (1-4 dot-separated
  *      integers, each 0-65535).
+ *   4. Every chrome.<NAMESPACE> API used in src/ MUST have its corresponding
+ *      permission declared in manifest.json (HARD ERROR — runtime would
+ *      throw TypeError or silently no-op).
  *
- * On failure: prints a CODE RED error block (exact path, what is missing, why)
- * and exits with code 1 to abort the build pipeline.
+ * Soft check (warning only):
+ *   - Permissions declared in manifest.json that have no matching chrome.*
+ *     usage in src/ are reported as warnings. Unused permissions inflate the
+ *     install consent prompt and slow Chrome Web Store review, but do not
+ *     break runtime.
+ *
+ * The strict variant of the permission audit (which fails on unused) lives
+ * in scripts/check-manifest-permissions.mjs. Both share
+ * scripts/lib/manifest-permission-audit.mjs.
+ *
+ * On hard failure: prints a CODE RED error block (exact path, what is missing,
+ * why) and exits with code 1 to abort the build pipeline.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  auditManifestPermissions,
+  printMissingPermissions,
+  printUnusedPermissions,
+} from "./lib/manifest-permission-audit.mjs";
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST_PATH = resolve(ROOT, "manifest.json");
 const CONSTANTS_PATH = resolve(ROOT, "src/shared/constants.ts");
+const SRC_DIR = resolve(ROOT, "src");
 
 /** Prints a CODE RED failure block and exits 1. */
 function fail(title, exactPath, missing, reason) {
