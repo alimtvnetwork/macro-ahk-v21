@@ -29,7 +29,7 @@ import {
     ensureDefaultProjectSingleScript,
 } from "./default-project-seeder";
 import { seedFromManifest } from "./manifest-seeder";
-import { setBootStep, setBootPersistenceMode, finalizeBoot, setBootError } from "./boot-diagnostics";
+import { setBootStep, setBootPersistenceMode, finalizeBoot, setBootError, getBootErrorContext } from "./boot-diagnostics";
 import { configureUserScriptWorld } from "./csp-fallback";
 import { markInitialized, drainBuffer } from "./message-buffer";
 import { cacheScriptCode, getCachedScriptCode, purgeStaleEntries, syncCacheWithBuildId, invalidateCacheOnDeploy } from "./injection-cache";
@@ -165,14 +165,33 @@ export async function boot(): Promise<void> {
     }
 }
 
-/** Persists boot failure metadata to chrome.storage.local for popup recovery UI. */
+/**
+ * Persists boot failure metadata to chrome.storage.local for popup recovery UI.
+ *
+ * Includes a stable `failureId` derived from the step + first 80 chars of the
+ * error message so the popup can:
+ *   1. Detect "is this the same failure I already have on screen?" across
+ *      service-worker restarts and popup re-opens.
+ *   2. Freeze its current click-trail snapshot under that ID exactly once,
+ *      ensuring the "Recent actions" list shown beside the failure never
+ *      drifts as the user keeps interacting.
+ *
+ * Also embeds the structured `BootErrorContext` (failing SQL / migration
+ * step) so degraded-mode banners can render the dedicated copyable block
+ * even when GET_STATUS races against a fresh SW restart.
+ */
 async function persistBootFailure(step: string, err: unknown): Promise<void> {
     try {
+        const message = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? (err.stack ?? null) : null;
+        const failureId = `failed:${step}|${message.slice(0, 80)}`;
         const payload = {
             step,
-            message: err instanceof Error ? err.message : String(err),
-            stack: err instanceof Error ? (err.stack ?? null) : null,
+            message,
+            stack,
             at: new Date().toISOString(),
+            failureId,
+            context: getBootErrorContext(),
         };
         await chrome.storage.local.set({ marco_last_boot_failure: payload });
     } catch {
