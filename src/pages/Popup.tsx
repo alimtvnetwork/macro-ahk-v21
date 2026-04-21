@@ -48,6 +48,7 @@ const PopupPage = () => {
     effectiveBootError,
     effectiveBootErrorStack,
     effectiveBootErrorContext,
+    effectiveWasmProbe,
   } = usePopupData();
 
   const versionCheck = useVersionCheck();
