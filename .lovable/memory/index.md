@@ -1,5 +1,5 @@
 # Memory: index.md
-Updated: 2026-04-20 (session: SQLite bind safety + SDK self-test round-trip)
+Updated: 2026-04-21 (session: extension build output → ./chrome-extension/)
 
 # Project Memory
 
@@ -20,6 +20,7 @@ Auth token utilities live in SDK (AuthTokenUtils static class on marco.authUtils
 MV3 suspension errors (context invalidated, receiving end missing) are operational states, not failures — show yellow not red.
 SQLite bind safety: never pass raw `undefined` to db.run/db.exec/stmt.bind — use `bindOpt`/`bindReq` from `handler-guards.ts`. Global Proxy net via `wrapDatabaseWithBindSafety` throws typed `BindError` (param index + column name + SQL preview) if anything slips.
 SDK self-test runs on every page load and now round-trips KV (set→get→verify→delete→verify-cleared); two PASS lines expected in DevTools.
+Extension build output lives at `./chrome-extension/` at repo root (powershell.json → distDir = "chrome-extension"). Load-unpacked target. `dist/` is reserved for the Lovable preview / web-app build only — never load it into Chrome.
 
 ## Memories
 - [Reliability report v4](mem://workflow/07-reliability-risk-report-v4) — AI handoff success at 93%, 1,079 tests, all 8 TS migration phases complete, cross-project sync Phase 1 done
