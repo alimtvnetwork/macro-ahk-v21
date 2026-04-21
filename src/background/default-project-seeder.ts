@@ -119,7 +119,6 @@ async function handleInstalled(
 
     // ✅ Pre-warm IndexedDB cache so scripts are ready for instant injection
     try {
-        const { warmScriptCache } = await import("./cache-warmer");
         const result = await warmScriptCache();
         console.log("[seeder] Cache warm complete: %d warmed, %d failed", result.warmed, result.failed);
     } catch (err) {
