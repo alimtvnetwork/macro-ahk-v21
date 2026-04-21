@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
 
 /** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
