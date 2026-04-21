@@ -53,6 +53,15 @@ interface BootErrorContext {
   scope: string | null;
 }
 
+interface WasmProbeResult {
+  url: string;
+  status: number | null;
+  contentLength: string | null;
+  headError: string | null;
+  ok: boolean;
+  at: string;
+}
+
 interface StatusData {
   connection: string;
   token: { status: string; expiresIn: string | null };
@@ -67,6 +76,8 @@ interface StatusData {
   bootErrorStack?: string | null;
   /** Structured operation context (failing SQL/migration step), null/undefined when unavailable. */
   bootErrorContext?: BootErrorContext | null;
+  /** Snapshot of the upfront HEAD probe against the bundled WASM asset. */
+  wasmProbe?: WasmProbeResult | null;
 }
 
 interface OpfsStatusData {
@@ -81,7 +92,7 @@ interface HealthData {
   details: string[];
 }
 
-export type { ActiveProjectData, InjectionStatus, PopupScript, StatusData, HealthData, OpfsStatusData };
+export type { ActiveProjectData, InjectionStatus, PopupScript, StatusData, HealthData, OpfsStatusData, WasmProbeResult };
 
 /**
  * Persisted boot-failure payload mirrored from chrome.storage.local
@@ -96,6 +107,8 @@ interface PersistedBootFailure {
   at: string;
   failureId: string;
   context: BootErrorContext | null;
+  /** WASM HEAD probe captured at the time of the failure. */
+  wasmProbe?: WasmProbeResult | null;
 }
 
 // eslint-disable-next-line max-lines-per-function
@@ -177,6 +190,7 @@ export function usePopupData() {
   const effectiveBootError = status?.bootError ?? persistedFailure?.message ?? null;
   const effectiveBootErrorStack = status?.bootErrorStack ?? persistedFailure?.stack ?? null;
   const effectiveBootErrorContext = status?.bootErrorContext ?? persistedFailure?.context ?? null;
+  const effectiveWasmProbe = status?.wasmProbe ?? persistedFailure?.wasmProbe ?? null;
 
   return {
     projectData,
@@ -197,6 +211,8 @@ export function usePopupData() {
     effectiveBootError,
     effectiveBootErrorStack,
     effectiveBootErrorContext,
+    /** WASM HEAD probe snapshot — captured at boot, persisted across SW restarts. */
+    effectiveWasmProbe,
   };
 }
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal, FileWarning } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
 
 /** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
@@ -10,6 +10,16 @@ export interface BootErrorContext {
   scope: string | null;
 }
 
+/** WASM HEAD-probe snapshot — see WasmProbeResult in shared/messages.ts. */
+export interface WasmProbeResult {
+  url: string;
+  status: number | null;
+  contentLength: string | null;
+  headError: string | null;
+  ok: boolean;
+  at: string;
+}
+
 interface BootFailureBannerProps {
   bootStep?: string;
   /** Underlying error message captured by the background service worker. */
@@ -18,6 +28,12 @@ interface BootFailureBannerProps {
   bootErrorStack?: string | null;
   /** Structured failing-operation context (SQL + migration step), if known. */
   bootErrorContext?: BootErrorContext | null;
+  /**
+   * Snapshot of the upfront HEAD probe against the bundled WASM asset.
+   * Includes status code, content-length, and any head-side error so users
+   * can diagnose `wasm-missing` failures without opening the SW console.
+   */
+  wasmProbe?: WasmProbeResult | null;
   /**
    * Trail of UI actions captured at the moment of failure. When provided,
    * the banner renders this snapshot INSTEAD of the live sessionStorage
@@ -37,9 +53,10 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, frozenTrail }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, wasmProbe, frozenTrail }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
+  const [showProbe, setShowProbe] = useState(true);
   const [copied, setCopied] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -54,9 +71,10 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const trail = frozenTrail ?? readClickTrail();
   const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
+  const probe = wasmProbe ?? null;
 
   const buildCurrentReport = (): string =>
-    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
+    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen });
 
   const handleCopyReport = async () => {
     try {
@@ -202,6 +220,33 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {/* ── WASM HEAD probe (collapsible, shown whenever the probe ran) ─ */}
+      {probe !== null ? (
+        <CollapsibleSection
+          icon={<FileWarning className="h-3 w-3" />}
+          label={`WASM probe — ${probe.ok ? "ok" : "failed"} (${probe.status !== null ? `HTTP ${probe.status}` : "no response"})`}
+          isOpen={showProbe}
+          onToggle={() => setShowProbe((v) => !v)}
+        >
+          <div className="space-y-1 text-[10px] font-mono text-destructive/80 bg-background/40 rounded p-2 border border-destructive/20">
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              <span><span className="text-destructive/60">status:</span> {probe.status !== null ? probe.status : "—"}</span>
+              <span><span className="text-destructive/60">content-length:</span> {probe.contentLength ?? "—"}</span>
+              <span><span className="text-destructive/60">ok:</span> {probe.ok ? "true" : "false"}</span>
+              <span><span className="text-destructive/60">at:</span> {formatTime(probe.at)}</span>
+            </div>
+            <div className="break-all">
+              <span className="text-destructive/60">url:</span> {probe.url}
+            </div>
+            {probe.headError !== null ? (
+              <div className="break-words whitespace-pre-wrap pt-1 border-t border-destructive/20">
+                <span className="text-destructive/60">head error:</span> {probe.headError}
+              </div>
+            ) : null}
+          </div>
+        </CollapsibleSection>
       ) : null}
 
       {/* ── Fix Steps ──────────────────────────────────────── */}
@@ -397,6 +442,7 @@ interface ReportInput {
   bootError: string | null | undefined;
   bootErrorStack: string | null | undefined;
   bootErrorContext: BootErrorContext | null;
+  wasmProbe: WasmProbeResult | null;
   fixSteps: string[];
   trail: ClickTrailEntry[];
   isFrozenTrail: boolean;
@@ -431,6 +477,20 @@ function buildReport(input: ReportInput): string {
       input.bootErrorContext.sql.split("\n").forEach((line) => {
         lines.push(`    ${line}`);
       });
+    }
+    lines.push("");
+  }
+
+  if (input.wasmProbe !== null) {
+    const p = input.wasmProbe;
+    lines.push("── WASM HEAD probe ───────────────────────");
+    lines.push(`  URL:            ${p.url}`);
+    lines.push(`  Status:         ${p.status !== null ? p.status : "(no response)"}`);
+    lines.push(`  Content-Length: ${p.contentLength ?? "(absent)"}`);
+    lines.push(`  OK:             ${p.ok ? "true" : "false"}`);
+    lines.push(`  Probed at:      ${p.at}`);
+    if (p.headError !== null) {
+      lines.push(`  HEAD error:     ${p.headError}`);
     }
     lines.push("");
   }

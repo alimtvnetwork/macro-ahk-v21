@@ -20,6 +20,7 @@ import {
     saveToOpfs,
 } from "./db-persistence";
 import { wrapDatabaseWithBindSafety } from "./sqlite-bind-safety";
+import { setWasmProbeResult, type WasmProbeResult } from "./boot-diagnostics";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -84,10 +85,23 @@ let isInitialized = false;
  *     dedicated "WASM file missing" fix steps.
  */
 async function verifyWasmPresence(wasmUrl: string): Promise<void> {
+    const probe: WasmProbeResult = {
+        url: wasmUrl,
+        status: null,
+        contentLength: null,
+        headError: null,
+        ok: false,
+        at: new Date().toISOString(),
+    };
+
     let headResponse: Response;
     try {
         headResponse = await fetch(wasmUrl, { method: "HEAD" });
+        probe.status = headResponse.status;
+        probe.contentLength = headResponse.headers.get("content-length");
     } catch (err) {
+        probe.headError = err instanceof Error ? err.message : String(err);
+        setWasmProbeResult(probe);
         // HEAD itself threw — treat as a missing file (web_accessible_resources
         // misconfig or extension URL not yet ready). Tagged so the banner picks
         // up the dedicated cause.
@@ -95,10 +109,11 @@ async function verifyWasmPresence(wasmUrl: string): Promise<void> {
             `[WASM_FILE_MISSING_404] HEAD request failed for "${wasmUrl}". ` +
             `The file "wasm/sql-wasm.wasm" appears to be missing from the packaged ` +
             `chrome-extension/ output OR is not listed in manifest.web_accessible_resources. ` +
-            `Original error: ${err instanceof Error ? err.message : String(err)}`,
+            `Original error: ${probe.headError}`,
         );
     }
     if (headResponse.status === 404) {
+        setWasmProbeResult(probe);
         throw new Error(
             `[WASM_FILE_MISSING_404] HEAD ${wasmUrl} returned 404. ` +
             `The packaged extension is missing "wasm/sql-wasm.wasm" — rebuild with ` +
@@ -107,6 +122,7 @@ async function verifyWasmPresence(wasmUrl: string): Promise<void> {
         );
     }
     if (!headResponse.ok) {
+        setWasmProbeResult(probe);
         throw new Error(
             `[WASM_FILE_MISSING_404] HEAD ${wasmUrl} returned HTTP ${headResponse.status}. ` +
             `Confirm "wasm/sql-wasm.wasm" is listed in manifest.web_accessible_resources and ` +
@@ -114,13 +130,16 @@ async function verifyWasmPresence(wasmUrl: string): Promise<void> {
         );
     }
     // If Content-Length is reported and zero, the file is packaged but empty.
-    const contentLength = headResponse.headers.get("content-length");
-    if (contentLength !== null && Number(contentLength) === 0) {
+    if (probe.contentLength !== null && Number(probe.contentLength) === 0) {
+        setWasmProbeResult(probe);
         throw new Error(
             `[WASM_FILE_MISSING_404] HEAD ${wasmUrl} reports Content-Length: 0. ` +
             `The packaged WASM file exists but is empty — rebuild the extension to regenerate it.`,
         );
     }
+
+    probe.ok = true;
+    setWasmProbeResult(probe);
 }
 
 /** Loads sql.js WASM binary from the extension bundle. */

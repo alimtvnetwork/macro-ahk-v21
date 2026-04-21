@@ -289,6 +289,21 @@ export interface BootErrorContext {
     scope: string | null;
 }
 
+/**
+ * Snapshot of the upfront HEAD probe against the bundled WASM asset. Mirrors
+ * `WasmProbeResult` in src/background/boot-diagnostics.ts. Surfaced in
+ * `StatusResponse.wasmProbe` so the popup banner can render the captured
+ * status code, content-length, and any HEAD error.
+ */
+export interface WasmProbeResult {
+    url: string;
+    status: number | null;
+    contentLength: string | null;
+    headError: string | null;
+    ok: boolean;
+    at: string;
+}
+
 export interface StatusResponse {
     connection: "online" | "offline" | "degraded";
     token: TokenStatus;
@@ -305,6 +320,8 @@ export interface StatusResponse {
     bootErrorStack: string | null;
     /** Structured operation context (failing SQL/migration step), null when unavailable. */
     bootErrorContext: BootErrorContext | null;
+    /** WASM HEAD probe snapshot; null when the probe never ran (boot died earlier). */
+    wasmProbe: WasmProbeResult | null;
 }
 
 export interface HealthStatusResponse {

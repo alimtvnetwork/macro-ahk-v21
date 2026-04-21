@@ -35,6 +35,29 @@ export interface BootErrorContext {
     scope: string | null;
 }
 
+/**
+ * Result of the upfront HEAD probe against the bundled WASM asset
+ * (`chrome-extension/wasm/sql-wasm.wasm`). Captured by `verifyWasmPresence()`
+ * regardless of outcome — when boot fails, this snapshot is persisted into
+ * `marco_last_boot_failure.wasmProbe` and rendered in BootFailureBanner so
+ * users can see *why* the file was rejected (404 vs 0-byte vs network error)
+ * without needing the SW console.
+ */
+export interface WasmProbeResult {
+    /** The packaged extension URL probed (chrome-extension://…/wasm/sql-wasm.wasm). */
+    url: string;
+    /** HTTP status returned by the HEAD request, or null if HEAD itself threw. */
+    status: number | null;
+    /** `Content-Length` header value (raw string), or null when not present. */
+    contentLength: string | null;
+    /** Error message thrown by `fetch(..., { method: "HEAD" })` itself, or null on success. */
+    headError: string | null;
+    /** True when the probe completed with status 2xx and non-zero Content-Length. */
+    ok: boolean;
+    /** ISO timestamp of when the probe ran. */
+    at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Module State                                                       */
 /* ------------------------------------------------------------------ */
@@ -47,6 +70,7 @@ let totalBootMs = 0;
 let bootErrorMessage: string | null = null;
 let bootErrorStack: string | null = null;
 let bootErrorContext: BootErrorContext | null = null;
+let wasmProbeResult: WasmProbeResult | null = null;
 
 /* ------------------------------------------------------------------ */
 /*  Boot Step                                                          */
@@ -148,6 +172,25 @@ export function getBootErrorStack(): string | null {
 /** Returns structured context (sql/migration step) for the boot error, if any. */
 export function getBootErrorContext(): BootErrorContext | null {
     return bootErrorContext;
+}
+
+/* ------------------------------------------------------------------ */
+/*  WASM Probe Result                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Records the outcome of the upfront HEAD probe against the packaged WASM
+ * asset. Always called by `verifyWasmPresence()` — on success AND failure —
+ * so the popup can render the captured details (status code, content-length,
+ * head error) in the BootFailureBanner's expanded WASM diagnostics block.
+ */
+export function setWasmProbeResult(result: WasmProbeResult): void {
+    wasmProbeResult = result;
+}
+
+/** Returns the captured WASM HEAD probe result, or null if the probe never ran. */
+export function getWasmProbeResult(): WasmProbeResult | null {
+    return wasmProbeResult;
 }
 
 /* ------------------------------------------------------------------ */

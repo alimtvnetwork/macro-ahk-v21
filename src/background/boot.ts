@@ -29,7 +29,7 @@ import {
     ensureDefaultProjectSingleScript,
 } from "./default-project-seeder";
 import { seedFromManifest } from "./manifest-seeder";
-import { setBootStep, setBootPersistenceMode, finalizeBoot, setBootError, getBootErrorContext } from "./boot-diagnostics";
+import { setBootStep, setBootPersistenceMode, finalizeBoot, setBootError, getBootErrorContext, getWasmProbeResult } from "./boot-diagnostics";
 import { configureUserScriptWorld } from "./csp-fallback";
 import { markInitialized, drainBuffer } from "./message-buffer";
 import { cacheScriptCode, getCachedScriptCode, purgeStaleEntries, syncCacheWithBuildId, invalidateCacheOnDeploy } from "./injection-cache";
@@ -192,6 +192,7 @@ async function persistBootFailure(step: string, err: unknown): Promise<void> {
             at: new Date().toISOString(),
             failureId,
             context: getBootErrorContext(),
+            wasmProbe: getWasmProbeResult(),
         };
         await chrome.storage.local.set({ marco_last_boot_failure: payload });
     } catch {
