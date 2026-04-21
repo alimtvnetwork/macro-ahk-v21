@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
 
 /** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
@@ -42,6 +42,7 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const [showTrail, setShowTrail] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   if (!bootStep || !bootStep.startsWith("failed:")) return null;
 
@@ -54,10 +55,12 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
 
+  const buildCurrentReport = (): string =>
+    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
+
   const handleCopyReport = async () => {
-    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
     try {
-      await navigator.clipboard.writeText(report);
+      await navigator.clipboard.writeText(buildCurrentReport());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -73,6 +76,35 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
       setTimeout(() => setSqlCopied(false), 2000);
     } catch {
       // Ignore — the snippet stays visible for manual copy.
+    }
+  };
+
+  /**
+   * Saves the same plain-text bundle returned by `buildCurrentReport()` as a
+   * downloadable `.txt` file. Filename embeds the failed step + an ISO-ish
+   * timestamp so multiple reports from the same browser don't clobber each
+   * other in the user's Downloads folder. Uses a transient `<a>` + Blob URL
+   * pattern that works in both the popup and the Lovable preview.
+   */
+  const handleDownloadReport = () => {
+    try {
+      const report = buildCurrentReport();
+      const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeStep = failedStep.replace(/[^a-z0-9-]+/gi, "-");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `marco-support-report-${safeStep}-${stamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Defer revoke so Chrome can finish the download.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 2000);
+    } catch {
+      // Blob/URL may be unavailable in unusual sandboxes — Copy report still works.
     }
   };
 
@@ -94,14 +126,24 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
             </p>
           ) : null}
         </div>
-        <button
-          onClick={handleCopyReport}
-          className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
-          title="Copy full diagnostic report to clipboard"
-        >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied" : "Copy report"}
-        </button>
+        <div className="shrink-0 flex items-center gap-1.5">
+          <button
+            onClick={handleCopyReport}
+            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
+            title="Copy full diagnostic report to clipboard"
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            {copied ? "Copied" : "Copy report"}
+          </button>
+          <button
+            onClick={handleDownloadReport}
+            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
+            title="Download full diagnostic report as a .txt file (includes stack trace + click trail)"
+          >
+            {downloaded ? <Check className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+            {downloaded ? "Saved" : "Create support report"}
+          </button>
+        </div>
       </div>
 
       {/* ── Failing operation (SQL / migration step) ───────── */}

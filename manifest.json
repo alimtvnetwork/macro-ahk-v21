@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Marco Macro Extension",
-    "version": "2.176.0",
+    "version": "2.177.0",
     "description": "Riseup Asia Marco — macro automation, XPath recording, and prompt management.",
     "permissions": [
         "storage",
