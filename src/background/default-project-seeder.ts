@@ -22,6 +22,8 @@ import { readAllProjects, writeAllProjects } from "./handlers/project-helpers";
 import { nowTimestamp } from "../shared/utils";
 import { seedFromManifest } from "./manifest-seeder";
 import { bootReady } from "./boot";
+import { invalidateCacheOnDeploy } from "./injection-cache";
+import { warmScriptCache } from "./cache-warmer";
 import {
     handleListUpdaters,
     handleCreateUpdater,
