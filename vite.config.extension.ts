@@ -23,7 +23,12 @@ import {
 import { execSync } from "node:child_process";
 
 const EXT_DIR = __dirname;
-const DIST_DIR = resolve(__dirname, "dist");
+// NOTE: The unpacked Chrome extension is written DIRECTLY into ./chrome-extension/
+// at the repo root (load-unpacked target). This replaces the legacy ./dist/ output.
+// dist/ is reserved for the Lovable preview / web-app build (`vite build` without
+// --config). Both the build script and PowerShell deploy modules read this path
+// from powershell.json -> distDir = "chrome-extension".
+const DIST_DIR = resolve(__dirname, "chrome-extension");
 
 function resolveDeclaredAssetSource(
     projectRootDir: string,
@@ -79,7 +84,7 @@ function resolveDeclaredAssetSource(
 /*  Plugins                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Copies and rewrites manifest.json to dist/. */
+/** Copies and rewrites manifest.json to chrome-extension/. */
 function copyManifest(): Plugin {
     return {
         name: "copy-manifest",
@@ -125,7 +130,7 @@ function copyManifest(): Plugin {
 }
 
 /**
- * Copies icon assets to dist/assets/icons/.
+ * Copies icon assets to chrome-extension/assets/icons/.
  *
  * If a specific size (e.g. icon-16.png) is missing on disk, falls back to the
  * largest available icon for that filename. This keeps the manifest valid on a
@@ -250,7 +255,7 @@ function generateBuildMeta(): Plugin {
     };
 }
 
-/** Re-aggregates prompts AFTER emptyOutDir wipes dist/, then copies into dist/prompts/. */
+/** Re-aggregates prompts AFTER emptyOutDir wipes the output, then copies into chrome-extension/prompts/. */
 function copyPrompts(): Plugin {
     return {
         name: "copy-prompts",
@@ -260,11 +265,17 @@ function copyPrompts(): Plugin {
                     `node scripts/aggregate-prompts.mjs`,
                     { cwd: __dirname, stdio: "inherit" },
                 );
-                const src = resolve(__dirname, "dist", "prompts", "macro-prompts.json");
+                // aggregate-prompts.mjs writes into chrome-extension/prompts/ directly,
+                // so this copy step is a no-op when src===dest, but we keep the explicit
+                // copy as a safety net for the case where a future contributor changes
+                // the aggregator's output directory.
+                const src = resolve(DIST_DIR, "prompts", "macro-prompts.json");
                 if (existsSync(src)) {
                     const destDir = resolve(DIST_DIR, "prompts");
                     mkdirSync(destDir, { recursive: true });
-                    copyFileSync(src, resolve(destDir, "macro-prompts.json"));
+                    if (resolve(src) !== resolve(destDir, "macro-prompts.json")) {
+                        copyFileSync(src, resolve(destDir, "macro-prompts.json"));
+                    }
                 }
             } catch (e) {
                 console.warn("[copy-prompts] failed:", e);
@@ -274,8 +285,8 @@ function copyPrompts(): Plugin {
 }
 
 /**
- * Copies compiled standalone scripts into dist/projects/scripts/{project-name}/.
- * Reads each project's dist/instruction.json for asset metadata.
+ * Copies compiled standalone scripts into chrome-extension/projects/scripts/{project-name}/.
+ * Reads each project's standalone-scripts/<name>/dist/instruction.json for asset metadata.
  * instruction.json is the sole source of truth — script-manifest.json is not required.
  */
 function copyProjectScripts(): Plugin {
@@ -373,7 +384,7 @@ function copyProjectScripts(): Plugin {
             }
 
             if (copiedCount > 0) {
-                console.log(`[copy-project-scripts] Copied ${copiedCount} project(s) to dist/projects/scripts/`);
+                console.log(`[copy-project-scripts] Copied ${copiedCount} project(s) to chrome-extension/projects/scripts/`);
             }
 
             // Regenerate seed-manifest.json AFTER emptyOutDir cleanup + project copy.
@@ -391,7 +402,7 @@ function copyProjectScripts(): Plugin {
 }
 
 /**
- * Copies the existing options page (plain HTML) to dist/.
+ * Copies the existing options page (plain HTML) to chrome-extension/.
  * This preserves the current options page until it's migrated to React.
  */
 function copyLegacyOptions(): Plugin {
@@ -439,11 +450,11 @@ export default defineConfig(({ mode }) => {
             validateNoBackgroundDynamicImport(),
             generateBuildMeta(),
             copyProjectScripts(),
-            // Bundle visualizer — gated behind ANALYZE=1 to keep dist/ slim.
+            // Bundle visualizer — gated behind ANALYZE=1 to keep the output slim.
             // Run `ANALYZE=1 pnpm run build:extension` to generate bundle-report.html.
             process.env.ANALYZE === "1"
                 ? (visualizer({
-                      filename: resolve(__dirname, "dist", "bundle-report.html"),
+                      filename: resolve(DIST_DIR, "bundle-report.html"),
                       template: "treemap",
                       gzipSize: true,
                       brotliSize: false,

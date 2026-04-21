@@ -16,7 +16,7 @@
     Deploys the built extension to a Chrome/Edge profile.
 .DESCRIPTION
     Supports three strategies:
-    1. Direct mode (-dm): prints the dist path for manual loading
+    1. Direct mode (-dm): prints the unpacked extension path for manual loading
     2. Hot-reload: when browser is running or Chrome v137+ (--load-extension disabled)
     3. Cold launch: starts browser with --load-extension flag
 .PARAMETER ProfileFolder
@@ -26,20 +26,20 @@ function Deploy-Extension([string]$ProfileFolder) {
     $userDataDir = Get-BrowserUserDataDir
 
     if ($script:DistDir -match '^[A-Za-z]:' -or $script:DistDir -match '^\\\\') {
-        Write-Host "  ERROR: DistDir is an absolute path ('$($script:DistDir)') -- expected relative (e.g. 'dist')." -ForegroundColor Red
+        Write-Host "  ERROR: DistDir is an absolute path ('$($script:DistDir)') -- expected relative (e.g. 'chrome-extension')." -ForegroundColor Red
         exit 1
     }
 
     $extDistPath = Join-Path $script:ExtensionDir $script:DistDir
     
     if (-not (Test-Path $extDistPath)) {
-        Write-Host "  ERROR: Extension dist not found: $extDistPath" -ForegroundColor Red
+        Write-Host "  ERROR: Extension build output not found: $extDistPath" -ForegroundColor Red
         exit 1
     }
     
     $manifestPath = Join-Path $extDistPath "manifest.json"
     if (-not (Test-Path $manifestPath)) {
-        Write-Host "  ERROR: manifest.json not found in dist/" -ForegroundColor Red
+        Write-Host "  ERROR: manifest.json not found in $($script:DistDir)/" -ForegroundColor Red
         Write-Host "    Checked path: $manifestPath" -ForegroundColor Red
         Write-Host "    Hint: the build likely produced the preview app instead of the extension bundle." -ForegroundColor Yellow
         exit 1
@@ -57,7 +57,7 @@ function Deploy-Extension([string]$ProfileFolder) {
     
     if ($script:directmode) {
         $script:LastDeployMode = "Direct mode"
-        $script:LastDeployNote = "Load unpacked manually from the dist folder."
+        $script:LastDeployNote = "Load unpacked manually from the chrome-extension/ folder (powershell.json -> distDir)."
         Write-Host ""
         Write-Host "  +---------------------------------------------------------+" -ForegroundColor Cyan
         Write-Host "  |  LOAD THIS FOLDER IN chrome://extensions -> Load unpacked  |" -ForegroundColor Cyan
@@ -94,7 +94,7 @@ function Deploy-Extension([string]$ProfileFolder) {
             Write-Host "  [OK] Chrome launched" -ForegroundColor Green
         } elseif ($isBrowserRunning) {
             if ($isFirstLoad) {
-                Write-Host "  Browser running, but this dist path is NOT loaded in profile '$ProfileFolder'." -ForegroundColor Yellow
+                Write-Host "  Browser running, but this unpacked extension path is NOT loaded in profile '$ProfileFolder'." -ForegroundColor Yellow
                 Write-Host "  Reload will keep refreshing the older unpacked extension until you load this folder once." -ForegroundColor Yellow
             } else {
                 Write-Host "  Browser running -- existing unpacked extension will auto-reload via hot-reload." -ForegroundColor Yellow
@@ -103,7 +103,7 @@ function Deploy-Extension([string]$ProfileFolder) {
 
         if ($isFirstLoad) {
             $script:LastDeployMode = "Manual first load"
-            $script:LastDeployNote = "Open chrome://extensions, remove/disable any older unpacked Marco copy if needed, then load this dist folder once."
+            $script:LastDeployNote = "Open chrome://extensions, remove/disable any older unpacked Marco copy if needed, then load this chrome-extension/ folder once."
         } elseif ($isLoadExtDisabled -and -not $isBrowserRunning) {
             $script:LastDeployMode = "Hot reload"
             $script:LastDeployNote = "Browser launched; existing unpacked extension will auto-reload."
