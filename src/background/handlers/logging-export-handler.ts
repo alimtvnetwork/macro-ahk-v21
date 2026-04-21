@@ -10,14 +10,13 @@
 import type { SqlValue } from "sql.js";
 import type { MessageRequest } from "../../shared/messages";
 import { getLogsDb, getErrorsDb, markLoggingDirty, countTable } from "./logging-handler";
+// JSZip is statically imported: dynamic import() is forbidden in the background
+// service-worker bundle (enforced by the validate-no-bg-dynamic-import Vite
+// plugin). MV3 service workers cannot reliably resolve dynamic ESM chunks, so
+// we accept the ~95 kB bundle cost for correctness over lazy-load savings.
+import JSZip from "jszip";
 import type JSZipType from "jszip";
 import { logCaughtError, BgLogTag} from "../bg-logger";
-
-/** Lazy JSZip loader — keeps ~95 kB out of the background service-worker bundle until export is invoked. */
-async function loadJSZip(): Promise<typeof JSZipType> {
-    const mod = await import("jszip");
-    return mod.default;
-}
 
 type JSZip = JSZipType;
 
