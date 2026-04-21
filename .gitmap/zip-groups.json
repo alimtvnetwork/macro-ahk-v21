@@ -6,8 +6,8 @@
         {
           "groupId": "91d8d7e6-f3c8-4443-93b7-232c191d4a8f",
           "repoPath": "D:\\wp-work\\riseup-asia\\macro-ahk",
-          "relativePath": ".\\chrome-extension\\dist\\",
-          "fullPath": "D:\\wp-work\\riseup-asia\\macro-ahk\\chrome-extension\\dist",
+          "relativePath": ".\\chrome-extension\\",
+          "fullPath": "D:\\wp-work\\riseup-asia\\macro-ahk\\chrome-extension",
           "isFolder": true
         }
       ]

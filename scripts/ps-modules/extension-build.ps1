@@ -180,7 +180,8 @@ function Invoke-SpecLinksBaselineAutoRefresh {
     Runs the Vite extension build and validates the output manifest.
 .DESCRIPTION
     Executes the effective build command, then verifies that all paths
-    referenced in the output manifest.json resolve to actual files in dist/.
+    referenced in the output manifest.json resolve to actual files in the
+    extension output directory (powershell.json -> distDir, default chrome-extension/).
 #>
 function Build-Extension {
     Write-Host "[3/4] Building extension..." -ForegroundColor Yellow
@@ -213,9 +214,10 @@ function Build-Extension {
     $effectiveBuildNow = Get-EffectivePnpmCommand $script:EffectiveBuildCommand
 
     # Safety rail: for extension repos, a generic `pnpm run build` / `vite build`
-    # often builds the preview app instead of the MV3 extension, leaving dist/
-    # without manifest.json. If package.json exposes build:extension, prefer it
-    # whenever the configured command does not explicitly target the extension.
+    # often builds the preview app instead of the MV3 extension, leaving the
+    # extension output directory ($script:DistDir) without manifest.json. If
+    # package.json exposes build:extension, prefer it whenever the configured
+    # command does not explicitly target the extension.
     $packageJsonPath = Join-Path $script:ExtensionDir "package.json"
     $hasBuildExtensionScript = $false
     if (Test-Path $packageJsonPath) {
@@ -260,9 +262,9 @@ function Build-Extension {
     # exact checked path and likely cause instead of falling through to deploy.
     $distManifestPath = Join-Path $script:ExtensionDir "$($script:DistDir)/manifest.json"
     if (-not (Test-Path $distManifestPath)) {
-        Write-Host "  [FAIL] Extension build completed but manifest.json is missing from dist" -ForegroundColor Red
+        Write-Host "  [FAIL] Extension build completed but manifest.json is missing from $($script:DistDir)/" -ForegroundColor Red
         Write-Host "    Checked path: $distManifestPath" -ForegroundColor Red
-        Write-Host "    Likely cause: the wrong build command produced a web-app dist instead of the extension bundle." -ForegroundColor Yellow
+        Write-Host "    Likely cause: the wrong build command produced a web-app dist/ instead of the extension bundle." -ForegroundColor Yellow
         Write-Host "    Expected: a build that copies manifest.json and background/index.js into $($script:DistDir)/" -ForegroundColor Yellow
         exit 3
     }
