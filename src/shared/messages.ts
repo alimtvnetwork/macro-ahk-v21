@@ -277,6 +277,18 @@ export interface BootTiming {
     durationMs: number;
 }
 
+/**
+ * Structured context describing the *exact* operation that triggered the
+ * boot failure (e.g. failing SQL statement + migration step). Mirrors
+ * `BootErrorContext` in src/background/boot-diagnostics.ts.
+ */
+export interface BootErrorContext {
+    sql: string | null;
+    migrationVersion: number | null;
+    migrationDescription: string | null;
+    scope: string | null;
+}
+
 export interface StatusResponse {
     connection: "online" | "offline" | "degraded";
     token: TokenStatus;
@@ -291,6 +303,8 @@ export interface StatusResponse {
     bootError: string | null;
     /** Underlying error stack trace if boot failed; null when unavailable. */
     bootErrorStack: string | null;
+    /** Structured operation context (failing SQL/migration step), null when unavailable. */
+    bootErrorContext: BootErrorContext | null;
 }
 
 export interface HealthStatusResponse {

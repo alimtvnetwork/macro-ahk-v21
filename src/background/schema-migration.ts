@@ -290,11 +290,23 @@ function buildResult(
     };
 }
 
+/**
+ * Module-level last-attempted-SQL recorder. `runIgnoringDuplicates()`
+ * updates this BEFORE each `db.run()` so when the migration's `up()` body
+ * throws (or a custom helper throws non-duplicate errors), we can still
+ * surface the exact statement text in the boot failure banner.
+ *
+ * Reset to null at the start of each migration so stale SQL from a
+ * successful prior migration cannot leak into a later failure report.
+ */
+let lastAttemptedSql: string | null = null;
+
 async function applySingleMigration(
     migration: Migration,
     logsDb: SqlJsDatabase,
     errorsDb: SqlJsDatabase,
 ): Promise<boolean> {
+    lastAttemptedSql = null;
     try {
         migration.up(logsDb, errorsDb);
         await persistVersion(migration.version);
@@ -302,9 +314,20 @@ async function applySingleMigration(
         console.log(`[migration] v${migration.version}: ${migration.description}`);
         return true;
     } catch (err) {
-        console.error(`[migration] Migration v${migration.version} failed\n  Path: SQLite in-memory DB (logs + errors)\n  Missing: Successful schema migration "${migration.description}"\n  Reason: ${err instanceof Error ? err.message : String(err)}`, err);  // Keep bare console.error — DB may be mid-migration
+        const reason = err instanceof Error ? err.message : String(err);
+        const sqlSuffix = lastAttemptedSql !== null
+            ? `\n  SQL: ${lastAttemptedSql}\n  Reason: ${reason}`
+            : `\n  Reason: ${reason}`;
+
+        console.error(`[migration] Migration v${migration.version} failed\n  Path: SQLite in-memory DB (logs + errors)\n  Missing: Successful schema migration "${migration.description}"${sqlSuffix}`, err);  // Keep bare console.error — DB may be mid-migration
         attemptRollback(migration, logsDb, errorsDb);
-        return false;
+
+        // Re-throw a tagged error so boot.ts → setBootError() can extract
+        // structured context (migration version + step + failing SQL) and
+        // the BootFailureBanner can render the dedicated copyable block.
+        throw new Error(
+            `[MIGRATION_FAILURE v=${migration.version} step="${migration.description}"] ${sqlSuffix.trim()}`,
+        );
     }
 }
 
@@ -329,12 +352,32 @@ function attemptRollback(
 /*  Utilities                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Runs a batch of statements, swallowing the SQLite "duplicate column /
+ * index already exists" class of errors. Any *other* failure re-throws so
+ * `applySingleMigration()` can attach migration version + step context.
+ *
+ * Records the most recent attempted statement into `lastAttemptedSql` so
+ * the upstream catch can include the exact failing SQL in its tagged
+ * error — this is the source-of-truth for the popup banner's "Failing
+ * statement" copyable block.
+ */
 function runIgnoringDuplicates(db: SqlJsDatabase, statements: string[]): void {
     for (const sql of statements) {
+        lastAttemptedSql = sql;
         try {
             db.run(sql);
-        } catch {
-            // Column/index already exists — safe to ignore
+        } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            const isDuplicate =
+                reason.toLowerCase().includes("duplicate column") ||
+                reason.toLowerCase().includes("already exists");
+            if (isDuplicate) {
+                continue;
+            }
+            // Non-recoverable — re-throw with the SQL preserved in
+            // lastAttemptedSql so the migration wrapper can tag it.
+            throw err;
         }
     }
 }

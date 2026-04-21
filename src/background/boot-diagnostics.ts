@@ -1,8 +1,9 @@
 /**
  * Marco Extension — Boot Diagnostics
  *
- * Tracks the latest boot step, persistence mode, and per-step
- * timing metrics for surfacing in the diagnostics UI.
+ * Tracks the latest boot step, persistence mode, per-step timing metrics,
+ * and structured error context (SQL/migration details) for surfacing in
+ * the popup BootFailureBanner.
  */
 
 /* ------------------------------------------------------------------ */
@@ -12,6 +13,26 @@
 export interface BootTiming {
     step: string;
     durationMs: number;
+}
+
+/**
+ * Structured context describing the *exact* operation that triggered the
+ * boot failure. Populated by `setBootError()` when the underlying Error
+ * carries one of the recognised tagged prefixes (parsed by
+ * parseBootErrorContext below).
+ *
+ * Surfaced in `GET_STATUS.bootErrorContext` and rendered as a dedicated
+ * "Failing operation" copyable code block in BootFailureBanner.
+ */
+export interface BootErrorContext {
+    /** SQL statement (verbatim) that threw, when applicable. */
+    sql: string | null;
+    /** Schema migration version (e.g. `8`) when the failure was inside a migration. */
+    migrationVersion: number | null;
+    /** Human-readable migration step description. */
+    migrationDescription: string | null;
+    /** Free-form scope label, e.g. "schema-init:logs" or "migration-up". */
+    scope: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -25,6 +46,7 @@ let stepStartTime = performance.now();
 let totalBootMs = 0;
 let bootErrorMessage: string | null = null;
 let bootErrorStack: string | null = null;
+let bootErrorContext: BootErrorContext | null = null;
 
 /* ------------------------------------------------------------------ */
 /*  Boot Step                                                          */
@@ -89,7 +111,19 @@ export function getTotalBootMs(): number {
 /*  Boot Error                                                         */
 /* ------------------------------------------------------------------ */
 
-/** Records the underlying error that caused boot to fail at the current step. */
+/**
+ * Records the underlying error that caused boot to fail.
+ *
+ * Also extracts structured context from tagged prefixes embedded in the
+ * error message (set by schema-migration / db-manager wrapper helpers):
+ *
+ *   [MIGRATION_FAILURE v=8 step="Add AssetVersion table"] CREATE TABLE …
+ *   [SCHEMA_INIT_FAILURE scope="logs:opfs"] CREATE INDEX …
+ *
+ * The leading SQL (or full message after the tag) is captured into
+ * `bootErrorContext.sql` so the popup banner can render it as a dedicated
+ * copyable code block.
+ */
 export function setBootError(error: unknown): void {
     if (error instanceof Error) {
         bootErrorMessage = error.message;
@@ -98,6 +132,7 @@ export function setBootError(error: unknown): void {
         bootErrorMessage = String(error);
         bootErrorStack = null;
     }
+    bootErrorContext = parseBootErrorContext(bootErrorMessage);
 }
 
 /** Returns the human-readable boot error message, or null if boot succeeded. */
@@ -108,4 +143,63 @@ export function getBootErrorMessage(): string | null {
 /** Returns the boot error stack trace, or null if unavailable. */
 export function getBootErrorStack(): string | null {
     return bootErrorStack;
+}
+
+/** Returns structured context (sql/migration step) for the boot error, if any. */
+export function getBootErrorContext(): BootErrorContext | null {
+    return bootErrorContext;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tagged-error parsing                                               */
+/* ------------------------------------------------------------------ */
+
+const MIGRATION_TAG_RE = /^\[MIGRATION_FAILURE\s+v=(\d+)\s+step="([^"]*)"\]\s*([\s\S]*)$/;
+const SCHEMA_INIT_TAG_RE = /^\[SCHEMA_INIT_FAILURE\s+scope="([^"]*)"\]\s*([\s\S]*)$/;
+const SQL_LINE_RE = /\bSQL:\s*([\s\S]+?)(?:\n\s*Reason:|\n\s*$|$)/;
+
+/**
+ * Extracts structured context from a tagged error message. Returns `null`
+ * when no recognised tag is present so the banner falls back to the
+ * generic stack-trace presentation.
+ */
+function parseBootErrorContext(message: string | null): BootErrorContext | null {
+    if (message === null || message.length === 0) {
+        return null;
+    }
+
+    const migrationMatch = MIGRATION_TAG_RE.exec(message);
+    if (migrationMatch !== null) {
+        return {
+            sql: extractSql(migrationMatch[3]),
+            migrationVersion: Number(migrationMatch[1]),
+            migrationDescription: migrationMatch[2],
+            scope: "migration-up",
+        };
+    }
+
+    const schemaMatch = SCHEMA_INIT_TAG_RE.exec(message);
+    if (schemaMatch !== null) {
+        return {
+            sql: extractSql(schemaMatch[2]),
+            migrationVersion: null,
+            migrationDescription: null,
+            scope: schemaMatch[1],
+        };
+    }
+
+    return null;
+}
+
+/**
+ * Pulls a `SQL: …` block out of a tagged error body. Falls back to the
+ * trimmed body when no explicit `SQL:` marker is present.
+ */
+function extractSql(body: string): string | null {
+    const sqlMatch = SQL_LINE_RE.exec(body);
+    if (sqlMatch !== null) {
+        return sqlMatch[1].trim();
+    }
+    const trimmed = body.trim();
+    return trimmed.length > 0 ? trimmed : null;
 }

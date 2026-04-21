@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, MousePointerClick, Code2, ListChecks } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
+
+/** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
+export interface BootErrorContext {
+  sql: string | null;
+  migrationVersion: number | null;
+  migrationDescription: string | null;
+  scope: string | null;
+}
 
 interface BootFailureBannerProps {
   bootStep?: string;
@@ -8,6 +16,8 @@ interface BootFailureBannerProps {
   bootError?: string | null;
   /** Underlying error stack trace captured by the background service worker. */
   bootErrorStack?: string | null;
+  /** Structured failing-operation context (SQL + migration step), if known. */
+  bootErrorContext?: BootErrorContext | null;
 }
 
 /**
@@ -20,10 +30,11 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
 
   if (!bootStep || !bootStep.startsWith("failed:")) return null;
 
@@ -31,15 +42,27 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack }: BootF
   const cause = classifyCause(failedStep, bootError);
   const fixSteps = getFixSteps(cause);
   const trail = readClickTrail();
+  const ctx = bootErrorContext ?? null;
 
   const handleCopyReport = async () => {
-    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, fixSteps, trail });
+    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail });
     try {
       await navigator.clipboard.writeText(report);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard may be denied; ignore — the textarea fallback below stays visible.
+    }
+  };
+
+  const handleCopySql = async () => {
+    if (ctx?.sql === null || ctx?.sql === undefined) return;
+    try {
+      await navigator.clipboard.writeText(ctx.sql);
+      setSqlCopied(true);
+      setTimeout(() => setSqlCopied(false), 2000);
+    } catch {
+      // Ignore — the snippet stays visible for manual copy.
     }
   };
 
@@ -70,6 +93,64 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack }: BootF
           {copied ? "Copied" : "Copy report"}
         </button>
       </div>
+
+      {/* ── Failing operation (SQL / migration step) ───────── */}
+      {ctx !== null && (ctx.sql !== null || ctx.migrationDescription !== null || ctx.scope !== null) ? (
+        <div className="rounded border border-destructive/30 bg-background/40 p-2 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Database className="h-3 w-3 text-destructive shrink-0" />
+              <span className="text-[11px] font-semibold text-destructive uppercase tracking-wide truncate">
+                Failing operation
+              </span>
+            </div>
+            {ctx.sql !== null ? (
+              <button
+                onClick={handleCopySql}
+                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
+                title="Copy failing SQL statement to clipboard"
+              >
+                {sqlCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {sqlCopied ? "Copied" : "Copy SQL"}
+              </button>
+            ) : null}
+          </div>
+
+          {/* Migration / scope metadata pills */}
+          <div className="flex flex-wrap gap-1.5 text-[10px]">
+            {ctx.migrationVersion !== null ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/30 text-destructive font-mono">
+                migration v{ctx.migrationVersion}
+              </span>
+            ) : null}
+            {ctx.migrationDescription !== null ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/30 text-destructive">
+                step: {ctx.migrationDescription}
+              </span>
+            ) : null}
+            {ctx.scope !== null ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/30 text-destructive font-mono">
+                scope: {ctx.scope}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Copyable failing-statement snippet */}
+          {ctx.sql !== null ? (
+            <div className="relative">
+              <div className="flex items-center gap-1 mb-1">
+                <Terminal className="h-3 w-3 text-destructive/70" />
+                <span className="text-[10px] font-medium text-destructive/70 uppercase tracking-wider">
+                  Failing statement
+                </span>
+              </div>
+              <pre className="text-[10px] font-mono text-destructive/90 bg-background/60 rounded p-2 overflow-x-auto max-h-40 whitespace-pre-wrap break-words border border-destructive/20">
+{ctx.sql}
+              </pre>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ── Fix Steps ──────────────────────────────────────── */}
       <div className="rounded border border-destructive/30 bg-destructive/5 p-2">
@@ -263,6 +344,7 @@ interface ReportInput {
   cause: Cause;
   bootError: string | null | undefined;
   bootErrorStack: string | null | undefined;
+  bootErrorContext: BootErrorContext | null;
   fixSteps: string[];
   trail: ClickTrailEntry[];
 }
@@ -279,6 +361,27 @@ function buildReport(input: ReportInput): string {
   lines.push(`Cause:          ${input.cause.label} (${input.cause.kind})`);
   lines.push(`Error message:  ${input.bootError ?? "(none captured)"}`);
   lines.push("");
+
+  if (input.bootErrorContext !== null) {
+    lines.push("── Failing operation ─────────────────────");
+    if (input.bootErrorContext.migrationVersion !== null) {
+      lines.push(`  Migration:  v${input.bootErrorContext.migrationVersion}`);
+    }
+    if (input.bootErrorContext.migrationDescription !== null) {
+      lines.push(`  Step:       ${input.bootErrorContext.migrationDescription}`);
+    }
+    if (input.bootErrorContext.scope !== null) {
+      lines.push(`  Scope:      ${input.bootErrorContext.scope}`);
+    }
+    if (input.bootErrorContext.sql !== null) {
+      lines.push(`  SQL:`);
+      input.bootErrorContext.sql.split("\n").forEach((line) => {
+        lines.push(`    ${line}`);
+      });
+    }
+    lines.push("");
+  }
+
   lines.push("── Suggested fix ─────────────────────────");
   input.fixSteps.forEach((step, idx) => {
     lines.push(`  ${idx + 1}. ${step}`);

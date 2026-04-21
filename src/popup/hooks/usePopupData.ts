@@ -12,6 +12,13 @@ import { getPlatform } from "../../platform";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+export interface BootErrorContext {
+    sql: string | null;
+    migrationVersion: number | null;
+    migrationDescription: string | null;
+    scope: string | null;
+}
+
 export interface StatusData {
     connection: "online" | "offline" | "degraded";
     token: { status: string; expiresIn: string | null };
@@ -26,6 +33,8 @@ export interface StatusData {
     bootError?: string | null;
     /** Underlying error stack trace if boot failed; null/undefined when unavailable. */
     bootErrorStack?: string | null;
+    /** Structured operation context (failing SQL/migration step), null/undefined when unavailable. */
+    bootErrorContext?: BootErrorContext | null;
 }
 
 export interface HealthData {

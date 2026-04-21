@@ -92,6 +92,7 @@ function getMockResponse(message: MessagePayload): string | number | boolean | n
             totalBootMs: 179,
             bootError: null,
             bootErrorStack: null,
+            bootErrorContext: null,
         },
         GET_HEALTH_STATUS: { state: "HEALTHY", details: [] },
         GET_AUTH_HEALTH: {
