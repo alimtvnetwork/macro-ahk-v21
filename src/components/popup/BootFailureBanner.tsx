@@ -222,6 +222,33 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
         </div>
       ) : null}
 
+      {/* ── WASM HEAD probe (collapsible, shown whenever the probe ran) ─ */}
+      {probe !== null ? (
+        <CollapsibleSection
+          icon={<FileWarning className="h-3 w-3" />}
+          label={`WASM probe — ${probe.ok ? "ok" : "failed"} (${probe.status !== null ? `HTTP ${probe.status}` : "no response"})`}
+          isOpen={showProbe}
+          onToggle={() => setShowProbe((v) => !v)}
+        >
+          <div className="space-y-1 text-[10px] font-mono text-destructive/80 bg-background/40 rounded p-2 border border-destructive/20">
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              <span><span className="text-destructive/60">status:</span> {probe.status !== null ? probe.status : "—"}</span>
+              <span><span className="text-destructive/60">content-length:</span> {probe.contentLength ?? "—"}</span>
+              <span><span className="text-destructive/60">ok:</span> {probe.ok ? "true" : "false"}</span>
+              <span><span className="text-destructive/60">at:</span> {formatTime(probe.at)}</span>
+            </div>
+            <div className="break-all">
+              <span className="text-destructive/60">url:</span> {probe.url}
+            </div>
+            {probe.headError !== null ? (
+              <div className="break-words whitespace-pre-wrap pt-1 border-t border-destructive/20">
+                <span className="text-destructive/60">head error:</span> {probe.headError}
+              </div>
+            ) : null}
+          </div>
+        </CollapsibleSection>
+      ) : null}
+
       {/* ── Fix Steps ──────────────────────────────────────── */}
       <div className="rounded border border-destructive/30 bg-destructive/5 p-2">
         <div className="flex items-center gap-1.5 mb-1.5">
