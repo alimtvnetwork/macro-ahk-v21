@@ -184,7 +184,6 @@ async function checkBadgeUrls(badges) {
     }
     if (!r.ok) allOk = false;
   }
-  }
   return allOk;
 }
 
