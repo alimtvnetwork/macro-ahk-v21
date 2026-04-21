@@ -442,6 +442,7 @@ interface ReportInput {
   bootError: string | null | undefined;
   bootErrorStack: string | null | undefined;
   bootErrorContext: BootErrorContext | null;
+  wasmProbe: WasmProbeResult | null;
   fixSteps: string[];
   trail: ClickTrailEntry[];
   isFrozenTrail: boolean;
@@ -476,6 +477,20 @@ function buildReport(input: ReportInput): string {
       input.bootErrorContext.sql.split("\n").forEach((line) => {
         lines.push(`    ${line}`);
       });
+    }
+    lines.push("");
+  }
+
+  if (input.wasmProbe !== null) {
+    const p = input.wasmProbe;
+    lines.push("── WASM HEAD probe ───────────────────────");
+    lines.push(`  URL:            ${p.url}`);
+    lines.push(`  Status:         ${p.status !== null ? p.status : "(no response)"}`);
+    lines.push(`  Content-Length: ${p.contentLength ?? "(absent)"}`);
+    lines.push(`  OK:             ${p.ok ? "true" : "false"}`);
+    lines.push(`  Probed at:      ${p.at}`);
+    if (p.headError !== null) {
+      lines.push(`  HEAD error:     ${p.headError}`);
     }
     lines.push("");
   }
