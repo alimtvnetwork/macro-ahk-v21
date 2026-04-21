@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal, FileWarning } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
 
 /** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
@@ -10,6 +10,16 @@ export interface BootErrorContext {
   scope: string | null;
 }
 
+/** WASM HEAD-probe snapshot — see WasmProbeResult in shared/messages.ts. */
+export interface WasmProbeResult {
+  url: string;
+  status: number | null;
+  contentLength: string | null;
+  headError: string | null;
+  ok: boolean;
+  at: string;
+}
+
 interface BootFailureBannerProps {
   bootStep?: string;
   /** Underlying error message captured by the background service worker. */
@@ -18,6 +28,12 @@ interface BootFailureBannerProps {
   bootErrorStack?: string | null;
   /** Structured failing-operation context (SQL + migration step), if known. */
   bootErrorContext?: BootErrorContext | null;
+  /**
+   * Snapshot of the upfront HEAD probe against the bundled WASM asset.
+   * Includes status code, content-length, and any head-side error so users
+   * can diagnose `wasm-missing` failures without opening the SW console.
+   */
+  wasmProbe?: WasmProbeResult | null;
   /**
    * Trail of UI actions captured at the moment of failure. When provided,
    * the banner renders this snapshot INSTEAD of the live sessionStorage
