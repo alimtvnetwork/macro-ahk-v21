@@ -11,7 +11,11 @@
  */
 
 const STORAGE_KEY = "marco_ui_click_trail";
+/** Per-failure frozen snapshots. Keyed by failureId (`failed:<step>|<msgPrefix>`). */
+const FROZEN_KEY_PREFIX = "marco_ui_click_trail_frozen:";
 const MAX_ENTRIES = 25;
+/** Max number of distinct frozen snapshots retained. Older keys are evicted. */
+const MAX_FROZEN_SNAPSHOTS = 5;
 
 export interface ClickTrailEntry {
     /** ISO timestamp the event was captured at. */
