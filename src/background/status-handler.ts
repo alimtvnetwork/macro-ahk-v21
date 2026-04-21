@@ -35,6 +35,7 @@ export async function buildStatusResponse(): Promise<StatusResponse> {
         bootError: getBootErrorMessage(),
         bootErrorStack: getBootErrorStack(),
         bootErrorContext: getBootErrorContext(),
+        wasmProbe: getWasmProbeResult(),
     };
 }
 
