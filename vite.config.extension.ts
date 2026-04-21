@@ -124,7 +124,18 @@ function copyManifest(): Plugin {
     };
 }
 
-/** Copies icon assets to dist/assets/icons/. */
+/**
+ * Copies icon assets to dist/assets/icons/.
+ *
+ * If a specific size (e.g. icon-16.png) is missing on disk, falls back to the
+ * largest available icon for that filename. This keeps the manifest valid on a
+ * fresh checkout where only icon-128.png has been committed; Chrome will
+ * downscale at display time. The fallback is logged so a real asset can be
+ * supplied later.
+ *
+ * Hard-fails ONLY when no icon at any size is available — we cannot fabricate
+ * an image.
+ */
 function copyIcons(): Plugin {
     return {
         name: "copy-icons",
@@ -134,13 +145,41 @@ function copyIcons(): Plugin {
 
             mkdirSync(destDir, { recursive: true });
 
-            for (const size of ["16", "48", "128"]) {
+            const sizes = ["16", "48", "128"];
+
+            // Pick fallback source: largest existing icon, else public/favicon.png.
+            const orderedFallbacks = [...sizes].reverse().map((s) => resolve(srcDir, `icon-${s}.png`));
+            orderedFallbacks.push(resolve(EXT_DIR, "public", "favicon.png"));
+
+            const fallbackSource = orderedFallbacks.find((p) => existsSync(p)) ?? null;
+
+            if (!fallbackSource) {
+                throw new Error(
+                    [
+                        "[copy-icons] HARD ERROR — no icon source available.",
+                        `  searched src dir: ${srcDir}`,
+                        `  searched fallback: ${resolve(EXT_DIR, "public", "favicon.png")}`,
+                        "  reason: at least one of icon-16/48/128.png or public/favicon.png must exist.",
+                    ].join("\n"),
+                );
+            }
+
+            for (const size of sizes) {
                 const filename = `icon-${size}.png`;
                 const srcPath = resolve(srcDir, filename);
+                const destPath = resolve(destDir, filename);
 
                 if (existsSync(srcPath)) {
-                    copyFileSync(srcPath, resolve(destDir, filename));
+                    copyFileSync(srcPath, destPath);
+                    continue;
                 }
+
+                copyFileSync(fallbackSource, destPath);
+                // eslint-disable-next-line no-console
+                console.warn(
+                    `[copy-icons] WARN — ${filename} missing at ${srcPath}; ` +
+                        `falling back to ${fallbackSource}. Add a real ${size}x${size} PNG to silence this.`,
+                );
             }
         },
     };
