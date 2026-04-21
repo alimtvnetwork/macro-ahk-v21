@@ -505,13 +505,18 @@ function buildReport(input: ReportInput): string {
   lines.push(`  Generated: ${new Date().toISOString()}`);
   lines.push("═══════════════════════════════════════════");
   lines.push("");
-  // Correlation block — lets support correlate multiple reports from the
-  // same underlying failure (across popup re-opens / SW restarts).
-  lines.push(`Failure ID:     ${input.failureId ?? "(not persisted)"}`);
-  lines.push(`Snapshot at:    ${input.failureAt ?? "(not persisted)"}`);
-  lines.push(`Failed step:    ${input.failedStep}`);
-  lines.push(`Cause:          ${input.cause.label} (${input.cause.kind})`);
-  lines.push(`Error message:  ${input.bootError ?? "(none captured)"}`);
+  // Correlation block — fixed-width labels so the colons align and values
+  // form a clean left edge. LABEL_WIDTH sized to the longest label
+  // ("Error message:" = 14 chars) + 1 space of padding.
+  const LABEL_WIDTH = 16;
+  const field = (label: string, value: string): string =>
+    `${(label + ":").padEnd(LABEL_WIDTH, " ")}${value}`;
+  lines.push(field("Failure ID",    input.failureId ?? "(not persisted)"));
+  lines.push(field("Snapshot at",   input.failureAt ?? "(not persisted)"));
+  lines.push(field("Failed step",   input.failedStep));
+  lines.push(field("Cause",         `${input.cause.label} (${input.cause.kind})`));
+  lines.push(field("Error message", input.bootError ?? "(none captured)"));
+  lines.push("───────────────────────────────────────────");
   lines.push("");
 
   if (input.bootErrorContext !== null) {
