@@ -471,6 +471,8 @@ interface ReportInput {
   failureId: string | null;
   /** ISO timestamp of when the failure was first persisted. */
   failureAt: string | null;
+  /** Tally of warnings filtered out of the Errors drawer. */
+  benignTally: BenignWarningTally;
 }
 
 /** Produces a plain-text bundle suitable for clipboard/issue reports. */
@@ -523,6 +525,19 @@ function buildReport(input: ReportInput): string {
     }
     lines.push("");
   }
+
+  // Filtered benign warnings — disclosed even when total is 0 so reviewers
+  // can confirm the suppression layer ran (vs. silently failing).
+  lines.push(`── Filtered benign warnings (${input.benignTally.total}) ─`);
+  if (input.benignTally.matched.length === 0) {
+    lines.push("  (no benign warnings suppressed)");
+  } else {
+    input.benignTally.matched.forEach((m) => {
+      lines.push(`  [${m.count}×]  ${m.id}`);
+      lines.push(`         ${m.label}`);
+    });
+  }
+  lines.push("");
 
   lines.push("── Suggested fix ─────────────────────────");
   input.fixSteps.forEach((step, idx) => {
