@@ -24,7 +24,7 @@ SDK self-test runs on every page load and now round-trips KV (set→get→verify
 ## Memories
 - [Reliability report v4](mem://workflow/07-reliability-risk-report-v4) — AI handoff success at 93%, 1,079 tests, all 8 TS migration phases complete, cross-project sync Phase 1 done
 - [Versioning policy](mem://workflow/version-synchronization-v3) — Unified v2.131.0 across manifest, constants.ts, standalone scripts, xpath
-- [Release installer (two-channel)](mem://features/release-installer) — Pinned `release-version.{ps1,sh}` (stamped, never queries `latest`) vs latest `install.{ps1,sh}`; release.yml stamps via sed and verifies sentinel
+- [Release installer (unified)](mem://features/release-installer) — Single `install.{ps1,sh}` auto-derives version from release-asset URL, falls back to GitHub `latest` API; no build-time stamping
 - [Suggestions convention](mem://workflow/suggestions-convention) — Single-file tracker at .lovable/memory/suggestions/
 - [Skipped folders policy](mem://constraints/skipped-folders) — Never edit skipped/ or .release/ folders
 - [v1.72.3 RCA & Fix Reference](mem://audit/v1.72.3-vs-current-audit-report) — Root cause analysis for broken prompts, injection, next buttons; fix recipes for future regressions

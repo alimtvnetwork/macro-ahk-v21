@@ -13,15 +13,17 @@
 #   - macro-controller-{VER}.zip   — standalone-scripts/macro-controller/**
 #   - marco-sdk-{VER}.zip          — standalone-scripts/marco-sdk/**
 #   - xpath-{VER}.zip              — standalone-scripts/xpath/**
-#   - install.sh                   — Bash latest-channel installer
-#   - install.ps1                  — PowerShell latest-channel installer
-#   - release-version.sh           — Bash PINNED installer (stamped with {VER})
-#   - release-version.ps1          — PowerShell PINNED installer (stamped with {VER})
+#   - install.sh                   — Unified Bash installer (URL-pinned or latest)
+#   - install.ps1                  — Unified PowerShell installer (URL-pinned or latest)
 #   - VERSION.txt                  — Plain-text version identifier
 #   - changelog.md                 — Project changelog (full)
 #   - checksums.txt                — SHA256 checksums of all assets
 #
-# Pinned installer spec: spec/18-release-installer/
+# When the installer is downloaded from this release's asset URL
+# (https://github.com/{repo}/releases/download/{VER}/install.{ps1,sh}),
+# it auto-derives {VER} from its own URL and is implicitly pinned. When
+# downloaded from raw.githubusercontent.com/.../main/, it falls back to
+# the GitHub `latest` release. No build-time stamping required.
 #
 # NOTE: No email or notification integrations — by design.
 # ──────────────────────────────────────────────────────────────
@@ -366,28 +368,12 @@ jobs:
           zip -r "../../release-assets/xpath-${VER}.zip" .
           cd ../..
 
-          # ── Install scripts (latest channel) ──
+          # ── Unified installer (URL-pinned when fetched from this release) ──
+          # No stamping needed: install.{ps1,sh} parse the version from their
+          # own download URL when fetched from /releases/download/{VER}/.
           cp scripts/install.sh  release-assets/install.sh
           cp scripts/install.ps1 release-assets/install.ps1
           chmod +x release-assets/install.sh
-
-          # ── Pinned-version installers (release-only assets) ──
-          # Stamp the sentinel __PINNED_VERSION__ with the actual release version.
-          # Spec: spec/18-release-installer/03-asset-packaging.md
-          sed "s/__PINNED_VERSION__/${VER}/g" scripts/release-version.ps1 \
-              > release-assets/release-version.ps1
-          sed "s/__PINNED_VERSION__/${VER}/g" scripts/release-version.sh \
-              > release-assets/release-version.sh
-          chmod +x release-assets/release-version.sh
-
-          # Fail loudly if the sentinel survived (would be a runtime-broken installer).
-          if grep -q '__PINNED_VERSION__' \
-                release-assets/release-version.ps1 \
-                release-assets/release-version.sh; then
-              echo "::error::Pinned-version sentinel was not substituted in release-version installers"
-              exit 1
-          fi
-          echo "✅ Pinned installers stamped with ${VER}"
 
           # ── VERSION.txt ──
           echo "${VER}" > release-assets/VERSION.txt
@@ -491,32 +477,30 @@ jobs:
             echo "| \`xpath-${VER}.zip\` | XPath utility |"
             echo "| \`prompts-${VER}.zip\` | Prompt templates |"
             echo "| \`changelog.md\` | Full project changelog |"
-            echo "| \`release-version.ps1\` | **Pinned** PowerShell installer — installs **exactly ${VER}** |"
-            echo "| \`release-version.sh\` | **Pinned** Bash installer — installs **exactly ${VER}** |"
-            echo "| \`install.ps1\` | Latest-channel PowerShell installer |"
-            echo "| \`install.sh\` | Latest-channel Bash installer |"
+            echo "| \`install.ps1\` | Unified PowerShell installer (URL-pinned to this release when fetched here) |"
+            echo "| \`install.sh\` | Unified Bash installer (URL-pinned to this release when fetched here) |"
             echo "| \`VERSION.txt\` | Version identifier |"
             echo "| \`checksums.txt\` | SHA256 checksums |"
             echo ""
             echo "### Quick Install"
             echo ""
-            echo "#### 🔒 Pinned to this release (recommended)"
+            echo "#### 🔒 Pinned to \`${VER}\` (recommended from this page)"
             echo ""
-            echo "Installs **exactly \`${VER}\`** — will not roll forward, even if a newer release exists."
+            echo "These one-liners download \`install.{ps1,sh}\` from **this release's** assets — the script auto-derives \`${VER}\` from its own URL and installs exactly that version."
             echo ""
             echo "**Windows (PowerShell):**"
             echo "\`\`\`powershell"
-            echo "irm https://github.com/${REPO}/releases/download/${VER}/release-version.ps1 | iex"
+            echo "irm https://github.com/${REPO}/releases/download/${VER}/install.ps1 | iex"
             echo "\`\`\`"
             echo ""
             echo "**Linux / macOS:**"
             echo "\`\`\`bash"
-            echo "curl -fsSL https://github.com/${REPO}/releases/download/${VER}/release-version.sh | bash"
+            echo "curl -fsSL https://github.com/${REPO}/releases/download/${VER}/install.sh | bash"
             echo "\`\`\`"
             echo ""
             echo "#### 🌊 Latest channel (auto-update)"
             echo ""
-            echo "Always resolves the newest published release at the moment it runs."
+            echo "These one-liners always resolve the newest published release."
             echo ""
             echo "**Windows (PowerShell):**"
             echo "\`\`\`powershell"
@@ -526,15 +510,6 @@ jobs:
             echo "**Linux / macOS:**"
             echo "\`\`\`bash"
             echo "curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | bash"
-            echo "\`\`\`"
-            echo ""
-            echo "**Pin a specific version (latest channel, manual override):**"
-            echo "\`\`\`powershell"
-            echo "& { \\\$Version = \"${VER}\"; irm https://raw.githubusercontent.com/${REPO}/main/scripts/install.ps1 | iex }"
-            echo "\`\`\`"
-            echo ""
-            echo "\`\`\`bash"
-            echo "curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | bash -s -- --version ${VER}"
             echo "\`\`\`"
             echo ""
             echo "### Manual Install (Chromium)"

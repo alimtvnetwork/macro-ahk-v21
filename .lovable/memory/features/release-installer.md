@@ -1,52 +1,63 @@
+---
+name: release-installer
+description: Single unified installer (install.ps1/install.sh) auto-derives version from release URL, falls back to latest
+type: feature
+---
+
 # Memory: features/release-installer
 Updated: 2026-04-21
 
-## Two-channel installer model
+## Single-channel unified installer
 
-The repo ships **two installer pairs** for the Chrome extension:
+The repo ships **one installer pair**: `scripts/install.ps1` and `scripts/install.sh`. Behavior is determined entirely at runtime by where the script was downloaded from — no build-time stamping, no separate "pinned" file.
 
-| Channel | Files | Default | Distribution |
-|---------|-------|---------|--------------|
-| Latest | `scripts/install.ps1` · `scripts/install.sh` | Resolves `latest` from GitHub API | `raw.githubusercontent.com` on `main` + release asset |
-| **Pinned** | `scripts/release-version.ps1` · `scripts/release-version.sh` | Installs **exactly** the release the file came from | **Release asset only** — never advertised on `main` |
+| Source URL | Resolved version | Behavior |
+|------------|------------------|----------|
+| `github.com/{repo}/releases/download/vX.Y.Z/install.{ps1,sh}` | `vX.Y.Z` (parsed from URL) | URL-pinned — yellow warning printed, summary shows "(pinned via release URL)" |
+| `raw.githubusercontent.com/{repo}/main/scripts/install.{ps1,sh}` | GitHub `latest` API | Auto-update — re-running upgrades to newest release |
+| Local clone, no URL context | GitHub `latest` API | Same as above |
 
-## Pinned installer rules
+## Resolution algorithm
 
-1. Version is determined by a **stamped constant** (`$script:PinnedVersion` / `PINNED_VERSION`). The committed source contains the sentinel `__PINNED_VERSION__`; `release.yml` substitutes the real version via `sed` when packaging assets.
-2. If the sentinel is still present at runtime, the installer falls back to **URL parsing** (`/releases/download/(vX.Y.Z)/`) on `$MyInvocation.MyCommand.Path`, `$PSCommandPath`, `$0`, `$BASH_SOURCE`, or `MARCO_INSTALLER_URL`.
-3. If neither yields a version, the installer **errors with exit code 2** — it never queries `latest`.
-4. `-Version vX.Y.Z` is allowed as an explicit override. The literal `latest` is hard-rejected (exit 3). Branch names and unversioned strings are rejected by the format regex `^v\d+\.\d+\.\d+(-[A-Za-z0-9.-]+)?$`.
-5. If the targeted release's `marco-extension-{VER}.zip` asset is missing on GitHub, the installer **errors with exit code 4** — it never rolls forward.
+```
+resolve_version(override):
+    1. If user passed --version / -Version explicitly:
+        - "latest" → query api.github.com/.../releases/latest
+        - vX.Y.Z[-pre] → use as-is
+        - anything else → exit 3 (format error)
+    2. Parse the script's source URL ($MyInvocation.MyCommand.Path,
+       $PSCommandPath, $env:MARCO_INSTALLER_URL, $BASH_SOURCE, $0).
+       If matches /releases/download/(vX.Y.Z[^/]*)/, use captured group.
+    3. Fall back to GitHub `latest` API.
+```
+
+There is no hard-error path for "no version determinable" — the latest API is always a viable fallback.
 
 ## Exit-code contract
 
 | Code | Meaning |
 |------|---------|
 | 0 | Install succeeded |
-| 2 | Cannot determine target version (sentinel + no URL context) |
-| 3 | Invalid `-Version` argument (incl. `latest`) |
-| 4 | Targeted release asset missing |
-| 5 | Network/tool error during download |
+| 3 | Invalid `--version` argument (malformed) |
+| 4 | Targeted release asset missing (404 on the ZIP) |
+| 5 | Network/tool error (latest API fetch failed, no curl/wget) |
 | 6 | Extracted archive invalid (no files / no manifest) |
+
+(Codes 1 and 2 are reserved for OS-detection and unexpected failures.)
 
 ## Release-pipeline contract (`release.yml`)
 
-The "Package release assets" step **must**:
-
-1. `sed`-substitute `__PINNED_VERSION__` → real version in both `release-version.ps1` and `release-version.sh`.
-2. `chmod +x` the bash variant.
-3. **Verify** with `grep -q '__PINNED_VERSION__'` that no sentinel survived. If any does, fail the workflow with `::error::`.
-4. Place both files in `release-assets/` so the existing `sha256sum *` and `softprops/action-gh-release` steps pick them up.
+The "Package release assets" step only **copies** the installers verbatim — no `sed`, no sentinel substitution, no verification step. Files are dropped into `release-assets/` so `sha256sum *` and `softprops/action-gh-release` pick them up alongside the ZIPs.
 
 ## Release-notes contract
 
-The "Quick Install" section in the generated release body is split into **two clearly labeled subsections**:
+The "Quick Install" section is split into two clearly labeled subsections:
 
-- 🔒 **Pinned to this release (recommended)** — uses `release-version.{ps1,sh}` from the release download URL.
-- 🌊 **Latest channel (auto-update)** — uses `install.{ps1,sh}` from `raw.githubusercontent.com/.../main/`.
+- 🔒 **Pinned to this release (recommended)** — `install.{ps1,sh}` from the release download URL. URL-pinning is implicit.
+- 🌊 **Latest channel (auto-update)** — `install.{ps1,sh}` from `raw.githubusercontent.com/.../main/`.
 
-Pinned comes **first** because users landing on a specific release page usually want that exact version.
+Pinned comes **first** because users on a specific release page typically want that exact version.
 
-## Spec source of truth
+## Why URL derivation (not build-time stamping)
 
-`spec/18-release-installer/` (overview, version-pinning contract, asset packaging, release-notes template, security review).
+The previous design (v0.1, since removed) shipped a separate `release-version.{ps1,sh}` with a `__PINNED_VERSION__` sentinel substituted by `sed` during release packaging. That added: a sentinel-leak verification step, a second installer pair to maintain, a parallel spec folder, and a code path that hard-errored when run from a clone. URL derivation collapses all of that into one file with no build dependency.

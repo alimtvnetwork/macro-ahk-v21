@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Re-exec under bash if invoked via sh/dash (which lack pipefail, local, etc.)
+# Re-exec under bash if invoked via sh/dash
 if [ -z "${BASH_VERSION:-}" ]; then
     if command -v bash >/dev/null 2>&1; then
         case "${0##*/}" in
@@ -9,31 +9,43 @@ if [ -z "${BASH_VERSION:-}" ]; then
         esac
         exec bash "$0" "$@"
     else
-        printf '\033[31m Error: bash is required but not found. Install bash first.\033[0m\n' >&2
+        printf '\033[31m Error: bash is required but not found.\033[0m\n' >&2
         exit 1
     fi
 fi
+
 # ─────────────────────────────────────────────────────────────────────
-# Marco Extension installer for Linux and macOS
+# Marco Extension — Unified installer (Linux / macOS)
 #
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash
+# Single installer — the version is auto-derived from the script's source
+# URL when downloaded from a GitHub release page (so each release-page
+# one-liner is implicitly pinned to that exact release). When run from
+# raw.githubusercontent.com/.../main/ or from a clone, it falls back to
+# resolving the GitHub `latest` release.
 #
-# Options:
-#   --version <ver>  Install a specific version (e.g. v2.116.1). Default: latest.
-#   --dir <path>     Target directory. Default: $HOME/marco-extension
-#   --repo <o/r>     GitHub owner/repo override.
+# Resolution order:
+#   1. Explicit --version override (vX.Y.Z[-pre], or `latest`).
+#   2. URL parsed from $BASH_SOURCE / $0 / $MARCO_INSTALLER_URL
+#      — matching /releases/download/(vX.Y.Z)/.
+#   3. GitHub Releases API → `latest`.
 #
 # Examples:
-#   curl -fsSL .../install.sh | bash
-#   curl -fsSL .../install.sh | bash -s -- --version v2.116.1
-#   ./install.sh --dir ~/my-extension
+#   # Release-page one-liner (URL-pinned):
+#   curl -fsSL https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v2.158.0/install.sh | bash
+#
+#   # From main (latest channel):
+#   curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash
+#
+#   # Explicit override:
+#   ./install.sh --version v2.150.0
 # ─────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
 REPO="alimtvnetwork/macro-ahk-v21"
+VERSION_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$'
 TMP_DIR=""
+URL_PINNED=0
 
 cleanup() {
     if [ -n "${TMP_DIR}" ] && [ -d "${TMP_DIR}" ]; then
@@ -42,20 +54,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ── Logging helpers ─────────────────────────────────────────────────
+# ── Logging ─────────────────────────────────────────────────────────
 
-step()  { printf ' \033[36m%s\033[0m\n' "$*" >&2; }
-ok()    { printf ' \033[32m%s\033[0m\n' "$*" >&2; }
-err()   { printf ' \033[31m%s\033[0m\n' "$*" >&2; }
+step() { printf ' \033[36m%s\033[0m\n' "$*" >&2; }
+ok()   { printf ' \033[32m%s\033[0m\n' "$*" >&2; }
+warn() { printf ' \033[33m%s\033[0m\n' "$*" >&2; }
+err()  { printf ' \033[31m%s\033[0m\n' "$*" >&2; }
 
-# ── Detect OS ───────────────────────────────────────────────────────
+# ── OS detection ────────────────────────────────────────────────────
 
 detect_os() {
     local uname_out
     uname_out="$(uname -s)"
     case "${uname_out}" in
-        Linux*)  echo "linux" ;;
-        Darwin*) echo "darwin" ;;
+        Linux*|Darwin*) ;;
         MINGW*|MSYS*|CYGWIN*)
             err "Windows detected. Use the PowerShell installer instead:"
             err "  irm https://raw.githubusercontent.com/${REPO}/main/scripts/install.ps1 | iex"
@@ -68,16 +80,25 @@ detect_os() {
     esac
 }
 
-# ── Resolve version (latest or pinned) ─────────────────────────────
+# ── Version resolution ─────────────────────────────────────────────
 
-resolve_version() {
-    local version="$1"
-    if [ -n "${version}" ]; then
-        echo "${version}"
-        return
-    fi
+is_valid_version() {
+    [[ "$1" =~ $VERSION_REGEX ]]
+}
 
-    step "Fetching latest release..."
+version_from_url() {
+    local candidate
+    for candidate in "${BASH_SOURCE[0]:-}" "${0:-}" "${MARCO_INSTALLER_URL:-}"; do
+        if [ -n "${candidate}" ] && [[ "${candidate}" =~ /releases/download/(v[0-9]+\.[0-9]+\.[0-9]+[^/]*)/ ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+fetch_latest_version() {
+    step "Resolving latest release from github.com/${REPO}..."
     local url="https://api.github.com/repos/${REPO}/releases/latest"
     local tag
 
@@ -86,19 +107,48 @@ resolve_version() {
     elif command -v wget >/dev/null 2>&1; then
         tag="$(wget -qO- "${url}" | grep '"tag_name"' | head -1 | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
     else
-        err "Neither curl nor wget found. Cannot fetch latest release."
-        exit 1
+        err "Neither curl nor wget found — cannot fetch latest release."
+        exit 5
     fi
 
     if [ -z "${tag}" ]; then
-        err "Failed to determine latest version."
-        exit 1
+        err "Failed to determine latest version from GitHub API."
+        exit 5
     fi
-
     echo "${tag}"
 }
 
-# ── Download helper ────────────────────────────────────────────────
+resolve_version() {
+    local override="$1"
+
+    # 1. Explicit override
+    if [ -n "${override}" ]; then
+        if [ "${override}" = "latest" ]; then
+            fetch_latest_version
+            return
+        fi
+        if ! is_valid_version "${override}"; then
+            err "Invalid --version '${override}'. Must match v<major>.<minor>.<patch>[-prerelease] or 'latest'."
+            exit 3
+        fi
+        echo "${override}"
+        return
+    fi
+
+    # 2. URL-derived pin
+    local from_url
+    if from_url="$(version_from_url)" && is_valid_version "${from_url}"; then
+        URL_PINNED=1
+        step "Pinned to ${from_url} (derived from download URL)."
+        echo "${from_url}"
+        return
+    fi
+
+    # 3. Fallback to latest
+    fetch_latest_version
+}
+
+# ── Download ────────────────────────────────────────────────────────
 
 download() {
     local url="$1" dest="$2"
@@ -108,125 +158,121 @@ download() {
         wget -qO "${dest}" "${url}"
     else
         err "Neither curl nor wget found."
-        exit 1
+        exit 5
     fi
 }
-
-# ── Download asset ──────────────────────────────────────────────────
 
 download_asset() {
     local version="$1"
     local asset_name="marco-extension-${version}.zip"
-    local base_url="https://github.com/${REPO}/releases/download/${version}"
-    local asset_url="${base_url}/${asset_name}"
-
+    local asset_url="https://github.com/${REPO}/releases/download/${version}/${asset_name}"
     local archive_path="${TMP_DIR}/${asset_name}"
 
-    step "Downloading ${asset_name} (${version})..."
+    step "Downloading ${asset_name}..."
     if ! download "${asset_url}" "${archive_path}"; then
         err "Download failed."
         err "URL: ${asset_url}"
-        exit 1
+        err ""
+        err "Release ${version} may have been retracted or the asset is missing."
+        exit 4
     fi
 
     ok "Downloaded successfully."
     echo "${archive_path}"
 }
 
-# ── Extract and install ────────────────────────────────────────────
+# ── Install ─────────────────────────────────────────────────────────
 
 install_extension() {
     local archive_path="$1" install_dir="$2" version="$3"
 
     step "Installing to ${install_dir}..."
 
-    # Clean previous install
     if [ -d "${install_dir}" ]; then
         rm -rf "${install_dir}"
     fi
-
     mkdir -p "${install_dir}"
 
-    # Extract
     if command -v unzip >/dev/null 2>&1; then
         unzip -qo "${archive_path}" -d "${install_dir}"
     else
-        err "unzip not found. Cannot extract archive."
-        err "Install unzip: sudo apt install unzip (Debian/Ubuntu) or brew install unzip (macOS)"
-        exit 1
+        err "unzip not found. Install via apt/brew and retry."
+        exit 6
     fi
 
-    # Verify extraction
     local file_count
     file_count="$(find "${install_dir}" -type f | wc -l | tr -d ' ')"
     if [ "${file_count}" -eq 0 ]; then
         err "Extraction produced no files in ${install_dir}"
-        exit 1
+        exit 6
     fi
 
-    # Write version marker
-    echo "${version}" > "${install_dir}/VERSION"
+    if [ ! -f "${install_dir}/manifest.json" ] && \
+       ! find "${install_dir}" -maxdepth 3 -name manifest.json -print -quit | grep -q .; then
+        err "manifest.json not found — archive may be corrupted."
+        exit 6
+    fi
 
+    echo "${version}" > "${install_dir}/VERSION"
     ok "Installed ${file_count} files to ${install_dir}"
 }
-
-# ── Resolve install directory ──────────────────────────────────────
 
 resolve_install_dir() {
     local dir="$1"
     if [ -n "${dir}" ]; then
         echo "${dir}"
-        return
+    else
+        echo "${HOME}/marco-extension"
     fi
-    echo "${HOME}/marco-extension"
 }
 
-# ── Parse arguments ────────────────────────────────────────────────
+# ── Args ────────────────────────────────────────────────────────────
 
 parse_args() {
-    VERSION=""
+    VERSION_OVERRIDE=""
     INSTALL_DIR=""
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            --version|-v)
-                VERSION="$2"
-                shift 2
-                ;;
-            --dir|-d)
-                INSTALL_DIR="$2"
-                shift 2
-                ;;
-            --repo|-r)
-                REPO="$2"
-                shift 2
-                ;;
+            --version|-v)  VERSION_OVERRIDE="$2"; shift 2 ;;
+            --dir|-d)      INSTALL_DIR="$2";      shift 2 ;;
+            --repo|-r)     REPO="$2";             shift 2 ;;
             --help|-h)
-                echo "Usage: install.sh [--version <ver>] [--dir <path>] [--repo <owner/repo>]"
-                echo ""
-                echo "Options:"
-                echo "  --version <ver>  Install a specific version (e.g. v2.116.1)"
-                echo "  --dir <path>     Target directory (default: ~/marco-extension)"
-                echo "  --repo <o/r>     GitHub owner/repo override"
+                cat <<EOF
+Usage: install.sh [--version <ver>] [--dir <path>] [--repo <owner/repo>]
+
+Unified installer for Marco Chrome Extension.
+
+When run from a GitHub release-page download URL, the version is auto-derived
+from that URL (URL-pinned). Otherwise falls back to GitHub 'latest'.
+
+Options:
+  --version <ver>  Force a specific version (vX.Y.Z[-pre]) or 'latest'.
+  --dir <path>     Target directory (default: ~/marco-extension)
+  --repo <o/r>     GitHub owner/repo override
+EOF
                 exit 0
                 ;;
             *)
                 err "Unknown option: $1"
                 err "Run with --help for usage."
-                exit 1
+                exit 3
                 ;;
         esac
     done
 }
 
-# ── Print install summary ──────────────────────────────────────────
+# ── Summary ─────────────────────────────────────────────────────────
 
 print_install_summary() {
     local version="$1" install_dir="$2"
-
+    local pin_note=""
+    if [ "${URL_PINNED}" -eq 1 ]; then
+        pin_note=" (pinned via release URL)"
+    fi
     echo ""
     step "Install summary"
-    printf '  Version:     %s\n' "${version}" >&2
+    printf '  Version:     %s%s\n' "${version}" "${pin_note}" >&2
     printf '  Install dir: %s\n' "${install_dir}" >&2
     echo ""
     echo "  ----------------------------------------------------------"
@@ -238,13 +284,15 @@ print_install_summary() {
     echo "  4. Select: ${install_dir}"
     echo "  ----------------------------------------------------------"
     echo ""
-    echo "  To update later, re-run this script — it replaces the folder."
-    echo ""
-    printf '  \033[90mExample with custom directory:\033[0m\n'
-    printf '    ./install.sh --dir ~/marco-extension\n'
+    if [ "${URL_PINNED}" -eq 1 ]; then
+        warn "URL-pinned install — re-running this exact one-liner reinstalls ${version}."
+        printf '  \033[90mFor auto-update, use install.sh from raw.githubusercontent.com/.../main/.\033[0m\n'
+    else
+        printf '  \033[90mTo update later, re-run this script \xe2\x80\x94 it replaces the folder.\033[0m\n'
+    fi
 }
 
-# ── Main ───────────────────────────────────────────────────────────
+# ── Main ────────────────────────────────────────────────────────────
 
 main() {
     echo ""
@@ -253,17 +301,14 @@ main() {
     echo ""
 
     parse_args "$@"
-
     detect_os
 
     local version install_dir archive_path
-
-    version="$(resolve_version "${VERSION}")"
+    version="$(resolve_version "${VERSION_OVERRIDE}")"
     install_dir="$(resolve_install_dir "${INSTALL_DIR}")"
 
     TMP_DIR="$(mktemp -d)"
     archive_path="$(download_asset "${version}")"
-
     install_extension "${archive_path}" "${install_dir}" "${version}"
 
     print_install_summary "${version}" "${install_dir}"
