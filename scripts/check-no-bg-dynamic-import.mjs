@@ -24,7 +24,7 @@
  *   - 0 when clean; 1 with a CODE RED report listing each offending location.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { resolve, dirname, relative, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -33,6 +33,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
 const TARGET_DIR = resolve(REPO_ROOT, "src/background");
 const TARGET_LABEL = "src/background";
+const BASELINE_PATH = resolve(REPO_ROOT, "scripts/check-no-bg-dynamic-import.baseline.json");
+const BASELINE_LABEL = "scripts/check-no-bg-dynamic-import.baseline.json";
+
+/* ------------------------------------------------------------------ */
+/*  CLI flags                                                          */
+/*    --update-baseline   write the current findings to the baseline   */
+/*                        file and exit 0                              */
+/*    --strict            ignore the baseline (fail on any finding)    */
+/* ------------------------------------------------------------------ */
+const ARGS = new Set(process.argv.slice(2));
+const FLAG_UPDATE_BASELINE = ARGS.has("--update-baseline");
+const FLAG_STRICT = ARGS.has("--strict");
 
 /* ------------------------------------------------------------------ */
 /*  Step 1: Verify target directory exists (CODE RED on miss)         */
