@@ -18,8 +18,8 @@
 
 <!-- Code-quality report cards (TS/JS analogues to Go Report Card) -->
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/alimtvnetwork/macro-ahk-v21/main?label=CodeFactor&logo=codefactor&style=flat-square)](https://www.codefactor.io/repository/github/alimtvnetwork/macro-ahk-v21)
-[![Codacy](https://img.shields.io/codacy/grade/PROJECT_ID?label=Codacy&logo=codacy&style=flat-square)](https://app.codacy.com/gh/alimtvnetwork/macro-ahk-v21/dashboard)
-[![Maintainability](https://img.shields.io/codeclimate/maintainability/alimtvnetwork/macro-ahk-v21?label=Code%20Climate&logo=code-climate&style=flat-square)](https://codeclimate.com/github/alimtvnetwork/macro-ahk-v21/maintainability)
+[![Codacy](https://img.shields.io/badge/Codacy-activate-blue?style=flat-square&logo=codacy&logoColor=white)](https://app.codacy.com/gh/alimtvnetwork/macro-ahk-v21/dashboard)
+[![Code Climate](https://img.shields.io/badge/Code%20Climate-activate-blue?style=flat-square&logo=codeclimate&logoColor=white)](https://codeclimate.com/github/alimtvnetwork/macro-ahk-v21)
 
 <!-- Stack & standards -->
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/intro/)
@@ -37,7 +37,13 @@
   <img src="docs/assets/marco-extension-hero.png" alt="Marco Chrome Extension — Projects view inside the options page" width="820" />
 </p>
 
-> **Note on report cards** — TypeScript/Node has no exact equivalent of [Go Report Card](https://goreportcard.com/). The closest analogues are **CodeFactor** (auto-grades any GitHub repo, no signup required for the badge), **Codacy**, and **Code Climate Maintainability** — all wired up above. Replace `PROJECT_ID` in the Codacy badge with your project's UUID after activating the repo at [app.codacy.com](https://app.codacy.com/).
+> **Report cards — activation status**
+>
+> - **CodeFactor** — ✅ live; grades automatically with no signup required.
+> - **Codacy** — ⏳ pending owner activation. Sign in at [app.codacy.com](https://app.codacy.com/) with the GitHub account that owns this repo, click **Add organization** → **macro-ahk-v21** → **Add project**. Once the first analysis completes, replace the placeholder badge with the live grade badge from **Project → Settings → General → Badges** (the URL contains your project UUID, e.g. `https://app.codacy.com/project/badge/Grade/<UUID>`).
+> - **Code Climate Maintainability** — ⏳ pending owner activation. Sign in at [codeclimate.com/quality](https://codeclimate.com/quality) → **Add a repository** → select **macro-ahk-v21**. After the first analysis, replace the placeholder badge with `https://api.codeclimate.com/v1/badges/<TOKEN>/maintainability` (find the token under **Repo Settings → Badges**).
+>
+> Both Codacy and Code Climate require OAuth signup with the repo owner's GitHub account, so they cannot be activated automatically — the placeholders above link to the activation pages.
 
 **Current Version:** v2.158.0 | **Macro Controller:** v7.41
 
@@ -50,25 +56,25 @@
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex
 ```
 
 **Linux / macOS (Bash):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash
 ```
 
 ### Pin a Specific Version
 
 ```powershell
 # PowerShell
-& { $Version = "v2.116.1"; irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.ps1 | iex }
+& { $Version = "v2.116.1"; irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex }
 ```
 
 ```bash
 # Bash
-curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.sh | bash -s -- --version v2.116.1
+curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash -s -- --version v2.116.1
 ```
 
 ### Custom Directory Install
@@ -93,7 +99,7 @@ curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/sc
 |------|-------------|---------|
 | `-Version` | Pin a specific release | `-Version v2.116.1` |
 | `-InstallDir` | Custom install directory | `-InstallDir D:\marco-extension\v2.116.1` |
-| `-Repo` | Override GitHub repository | `-Repo alimtvnetwork/macro-ahk-v15` |
+| `-Repo` | Override GitHub repository | `-Repo alimtvnetwork/macro-ahk-v21` |
 
 **Linux / macOS (Bash):**
 
@@ -101,11 +107,11 @@ curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/sc
 |------|-------------|---------|
 | `--version` | Pin a specific release | `--version v2.116.1` |
 | `--dir` | Custom install directory | `--dir ~/marco-extension/v2.116.1` |
-| `--repo` | Override GitHub repository | `--repo alimtvnetwork/macro-ahk-v15` |
+| `--repo` | Override GitHub repository | `--repo alimtvnetwork/macro-ahk-v21` |
 
 ### Manual Install
 
-1. Download `marco-extension-v{VERSION}.zip` from [Releases](https://github.com/alimtvnetwork/macro-ahk-v15/releases)
+1. Download `marco-extension-v{VERSION}.zip` from [Releases](https://github.com/alimtvnetwork/macro-ahk-v21/releases)
 2. Extract to a folder (e.g., `D:\marco-extension\v2.116.1`)
 3. Open `chrome://extensions` (or `edge://extensions`)
 4. Enable **Developer mode** (toggle in top-right)
@@ -391,7 +397,7 @@ Pushing to a `release/*` branch (e.g., `release/v2.117.0`) automatically:
 8. Generates categorized release notes from commit history with Bash + PowerShell install commands
 9. Creates a GitHub Release with all assets attached
 
-**No email or notification is sent** — check the [Releases page](https://github.com/alimtvnetwork/macro-ahk-v15/releases) for status.
+**No email or notification is sent** — check the [Releases page](https://github.com/alimtvnetwork/macro-ahk-v21/releases) for status.
 
 ### Release Assets
 
@@ -411,13 +417,13 @@ Pushing to a `release/*` branch (e.g., `release/v2.117.0`) automatically:
 **Windows (PowerShell)**
 
 ```powershell
-irm https://github.com/alimtvnetwork/macro-ahk-v15/releases/download/v{VER}/install.ps1 | iex
+irm https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v{VER}/install.ps1 | iex
 ```
 
 **Linux / macOS**
 
 ```bash
-curl -fsSL https://github.com/alimtvnetwork/macro-ahk-v15/releases/download/v{VER}/install.sh | bash
+curl -fsSL https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v{VER}/install.sh | bash
 ```
 
 ---

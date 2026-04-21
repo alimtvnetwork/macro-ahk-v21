@@ -13,10 +13,10 @@
   Target directory. Default: $HOME\marco-extension
 
 .PARAMETER Repo
-  GitHub owner/repo. Default: alimtvnetwork/macro-ahk-v15
+  GitHub owner/repo. Default: alimtvnetwork/macro-ahk-v21
 
 .EXAMPLE
-  irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.ps1 | iex
+  irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex
 
 .EXAMPLE
   & ./install.ps1 -Version v2.116.1
@@ -25,13 +25,13 @@
   & ./install.ps1 -InstallDir "D:\marco-extension"
 
 .NOTES
-  Repository: https://github.com/alimtvnetwork/macro-ahk-v15
+  Repository: https://github.com/alimtvnetwork/macro-ahk-v21
 #>
 
 param(
     [string]$Version = "",
     [string]$InstallDir = "",
-    [string]$Repo = "alimtvnetwork/macro-ahk-v15"
+    [string]$Repo = "alimtvnetwork/macro-ahk-v21"
 )
 
 $ErrorActionPreference = "Stop"

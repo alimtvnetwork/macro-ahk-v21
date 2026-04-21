@@ -1019,8 +1019,8 @@ function GeneralTabContent({ project, allProjects, onSave }: GeneralTabContentPr
             size="sm"
             variant="outline"
             className="gap-1.5 text-xs"
-            onClick={() => {
-              const kb = exportKnowledgeBase({
+            onClick={async () => {
+              const kb = await exportKnowledgeBase({
                 extensionId: chrome?.runtime?.id,
                 projectContext: {
                   name: project.name,

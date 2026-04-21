@@ -14,7 +14,13 @@
 
 import type { SqlValue } from "@/background/handlers/handler-types";
 import initSqlJs, { type Database } from "sql.js";
-import JSZip from "jszip";
+import type JSZipType from "jszip";
+
+/** Lazy JSZip loader — keeps ~95 kB out of the options/popup chunk until import/export runs. */
+async function loadJSZip(): Promise<typeof JSZipType> {
+  const mod = await import("jszip");
+  return mod.default;
+}
 import { sendMessage } from "@/lib/message-client";
 import type {
   StoredProject,
@@ -272,7 +278,7 @@ export async function exportAllAsSqliteZip(): Promise<void> {
   const dbData = db.export();
   db.close();
 
-  const zip = new JSZip();
+  const JSZipCtor = await loadJSZip(); const zip = new JSZipCtor();
   zip.file(DB_FILENAME, dbData);
 
   const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
@@ -331,7 +337,7 @@ export async function exportProjectAsSqliteZip(project: StoredProject): Promise<
   const dbData = db.export();
   db.close();
 
-  const zip = new JSZip();
+  const JSZipCtor = await loadJSZip(); const zip = new JSZipCtor();
   zip.file(DB_FILENAME, dbData);
 
   const safeName = project.name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
@@ -471,7 +477,7 @@ function readPrompts(db: Database): PromptEntry[] {
 // eslint-disable-next-line max-lines-per-function
 export async function previewSqliteZip(file: File): Promise<BundlePreview> {
   const arrayBuffer = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(arrayBuffer);
+  const JSZipCtor = await loadJSZip(); const zip = await JSZipCtor.loadAsync(arrayBuffer);
 
   const dbFile = zip.file(DB_FILENAME);
   if (!dbFile) {
@@ -571,7 +577,7 @@ export async function mergeFromSqliteZip(file: File): Promise<ImportResult> {
 
 async function extractBundle(file: File) {
   const arrayBuffer = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(arrayBuffer);
+  const JSZipCtor = await loadJSZip(); const zip = await JSZipCtor.loadAsync(arrayBuffer);
   const dbFile = zip.file(DB_FILENAME);
   if (!dbFile) throw new Error(`Invalid bundle: missing ${DB_FILENAME} inside the zip`);
   const dbData = await dbFile.async("uint8array");
@@ -690,7 +696,7 @@ export async function exportPromptsAsSqliteZip(): Promise<void> {
   const dbData = db.export();
   db.close();
 
-  const zip = new JSZip();
+  const JSZipCtor = await loadJSZip(); const zip = new JSZipCtor();
   zip.file(DB_FILENAME, dbData);
   const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
   triggerDownload(blob, "marco-prompts-backup.zip");
@@ -699,7 +705,7 @@ export async function exportPromptsAsSqliteZip(): Promise<void> {
 /** Imports prompts from a SQLite ZIP (replace mode). */
 export async function importPromptsFromSqliteZip(file: File): Promise<{ promptCount: number }> {
   const arrayBuffer = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(arrayBuffer);
+  const JSZipCtor = await loadJSZip(); const zip = await JSZipCtor.loadAsync(arrayBuffer);
   const dbFile = zip.file(DB_FILENAME);
   if (!dbFile) throw new Error(`Invalid bundle: missing ${DB_FILENAME} inside the zip`);
   const dbData = await dbFile.async("uint8array");
@@ -729,7 +735,7 @@ export async function importPromptsFromSqliteZip(file: File): Promise<{ promptCo
 /** Merges prompts from a SQLite ZIP (no deletions). */
 export async function mergePromptsFromSqliteZip(file: File): Promise<{ promptCount: number }> {
   const arrayBuffer = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(arrayBuffer);
+  const JSZipCtor = await loadJSZip(); const zip = await JSZipCtor.loadAsync(arrayBuffer);
   const dbFile = zip.file(DB_FILENAME);
   if (!dbFile) throw new Error(`Invalid bundle: missing ${DB_FILENAME} inside the zip`);
   const dbData = await dbFile.async("uint8array");

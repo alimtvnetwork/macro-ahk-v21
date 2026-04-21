@@ -17,7 +17,7 @@ fi
 # Marco Extension installer for Linux and macOS
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash
 #
 # Options:
 #   --version <ver>  Install a specific version (e.g. v2.116.1). Default: latest.
@@ -32,7 +32,7 @@ fi
 
 set -euo pipefail
 
-REPO="alimtvnetwork/macro-ahk-v15"
+REPO="alimtvnetwork/macro-ahk-v21"
 TMP_DIR=""
 
 cleanup() {
