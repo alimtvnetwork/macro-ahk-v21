@@ -10,8 +10,16 @@
 import type { SqlValue } from "sql.js";
 import type { MessageRequest } from "../../shared/messages";
 import { getLogsDb, getErrorsDb, markLoggingDirty, countTable } from "./logging-handler";
-import JSZip from "jszip";
+import type JSZipType from "jszip";
 import { logCaughtError, BgLogTag} from "../bg-logger";
+
+/** Lazy JSZip loader — keeps ~95 kB out of the background service-worker bundle until export is invoked. */
+async function loadJSZip(): Promise<typeof JSZipType> {
+    const mod = await import("jszip");
+    return mod.default;
+}
+
+type JSZip = JSZipType;
 
 /* ------------------------------------------------------------------ */
 /*  PURGE_LOGS                                                         */
