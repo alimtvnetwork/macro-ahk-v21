@@ -122,7 +122,8 @@ interface ProjectGroup {
 /*  module and break the dynamic-import chunk split.                   */
 /* ------------------------------------------------------------------ */
 
-export { SyncBadge } from "./SyncBadge";
+import { SyncBadge } from "./SyncBadge";
+export { SyncBadge };
 
 /* ------------------------------------------------------------------ */
 /*  AssetTypeIcon                                                      */
