@@ -18,8 +18,8 @@
 
 <!-- Code-quality report cards (TS/JS analogues to Go Report Card) -->
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/alimtvnetwork/macro-ahk-v21/main?label=CodeFactor&logo=codefactor&style=flat-square)](https://www.codefactor.io/repository/github/alimtvnetwork/macro-ahk-v21)
-[![Codacy](https://img.shields.io/codacy/grade/PROJECT_ID?label=Codacy&logo=codacy&style=flat-square)](https://app.codacy.com/gh/alimtvnetwork/macro-ahk-v21/dashboard)
-[![Maintainability](https://img.shields.io/codeclimate/maintainability/alimtvnetwork/macro-ahk-v21?label=Code%20Climate&logo=code-climate&style=flat-square)](https://codeclimate.com/github/alimtvnetwork/macro-ahk-v21/maintainability)
+[![Codacy](https://img.shields.io/badge/Codacy-activate-blue?style=flat-square&logo=codacy&logoColor=white)](https://app.codacy.com/gh/alimtvnetwork/macro-ahk-v21/dashboard)
+[![Code Climate](https://img.shields.io/badge/Code%20Climate-activate-blue?style=flat-square&logo=codeclimate&logoColor=white)](https://codeclimate.com/github/alimtvnetwork/macro-ahk-v21)
 
 <!-- Stack & standards -->
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/intro/)
