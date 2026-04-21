@@ -134,6 +134,16 @@ Phase 1 (data layer) and Phase 2 (Library UI) complete. Remaining: ProjectGroup 
 
 Spec: `spec/13-features/cross-project-sync.md`
 
+### Priority 5: Release Installer Hardening (v0.2)
+
+The pinned-version installer pair (`scripts/release-version.{ps1,sh}`) ships in v0.1 with stamped-version + URL-fallback resolution and hard-rejects every fall-forward path. v0.2 hardening, in priority order:
+
+1. **Built-in checksum verification** — installer fetches `checksums.txt` from the same release and verifies the ZIP's SHA256 before extracting (~15 LOC per script).
+2. **Authenticode-signed `release-version.ps1`** + GPG-signed `release-version.sh` released alongside `.sig` files.
+3. **SLSA build provenance** for end-user audit of the GitHub Action that produced assets.
+
+Spec: `spec/18-release-installer/05-security-review.md`
+
 ---
 
 ## Completed Work (Summary)
