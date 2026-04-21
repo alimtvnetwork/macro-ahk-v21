@@ -175,10 +175,13 @@ function Build-Extension {
         }
     }
 
-    $isGenericBuildCommand = (
-        $effectiveBuildNow -match '(^|\s)(pnpm|npm|bun)\s+(--ignore-workspace\s+)?run\s+build(\s|$)'
-        -or $effectiveBuildNow -match '(^|\s)vite\s+build(\s|$)'
-    ) -and ($effectiveBuildNow -notmatch 'build:extension|vite\.config\.extension\.ts')
+    # Note: split into discrete -match assignments because PowerShell's parser
+    # struggles with multi-line boolean expressions where a regex literal ends
+    # with `)` immediately before a newline followed by `-or`.
+    $matchesPnpmRunBuild = $effectiveBuildNow -match '(^|\s)(pnpm|npm|bun)\s+(--ignore-workspace\s+)?run\s+build(\s|$)'
+    $matchesViteBuild = $effectiveBuildNow -match '(^|\s)vite\s+build(\s|$)'
+    $targetsExtensionBuild = $effectiveBuildNow -match 'build:extension|vite\.config\.extension\.ts'
+    $isGenericBuildCommand = ($matchesPnpmRunBuild -or $matchesViteBuild) -and (-not $targetsExtensionBuild)
 
     if ($hasBuildExtensionScript -and $isGenericBuildCommand) {
         Write-Host "  [WARN] Generic build command detected for an extension repo; using build:extension instead" -ForegroundColor Yellow
