@@ -30,6 +30,8 @@
     "check:spec-links:strict": "node scripts/check-spec-links.mjs --strict",
     "lint:no-bun": "node scripts/no-bun-in-scripts.mjs",
     "lint:no-bg-dynamic-import": "node scripts/check-no-bg-dynamic-import.mjs",
+    "lint:no-bg-dynamic-import:update-baseline": "node scripts/check-no-bg-dynamic-import.mjs --update-baseline",
+    "lint:no-bg-dynamic-import:strict": "node scripts/check-no-bg-dynamic-import.mjs --strict",
     "bump": "node scripts/bump-version.mjs",
     "version:patch": "node scripts/bump-version.mjs patch",
     "version:minor": "node scripts/bump-version.mjs minor",
