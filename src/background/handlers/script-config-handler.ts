@@ -10,6 +10,7 @@
 
 import type { MessageRequest, OkResponse } from "../../shared/messages";
 import type { StoredScript, StoredConfig } from "../../shared/script-config-types";
+import { handleGetAllProjects } from "./project-handler";
 
 const STORAGE_KEY_SCRIPTS = "marco_scripts";
 const STORAGE_KEY_CONFIGS = "marco_configs";
