@@ -463,18 +463,15 @@ export const HANDLER_REGISTRY = new Map<MessageType, MessageHandler>([
     [MessageType.IMPORT_AUTOMATION_CHAINS, async (msg) => handleImportAutomationChains(msg)],
     // ─── Cache Management (Issue 88) ───
     [MessageType.INVALIDATE_CACHE, async () => {
-        const { cacheClearAll } = await import("./injection-cache");
         const result = await cacheClearAll();
         return { isOk: true, cleared: result.cleared };
     }],
     [MessageType.GET_CACHE_STATS, async () => {
-        const { cacheStats } = await import("./injection-cache");
         const stats = await cacheStats();
         return { isOk: true, ...stats };
     }],
     // ─── Dynamic Script Loading ───
     [MessageType.DYNAMIC_REQUIRE, async (msg) => {
-        const { handleDynamicRequire } = await import("./handlers/dynamic-require-handler");
         return handleDynamicRequire(msg);
     }],
     // ─── Cross-Project Sync (Spec 13) ───
