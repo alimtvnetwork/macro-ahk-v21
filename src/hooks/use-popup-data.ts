@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { sendMessage } from "@/lib/message-client";
+import { freezeClickTrail, readFrozenClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
 
 interface ActiveProjectData {
   activeProject: {
