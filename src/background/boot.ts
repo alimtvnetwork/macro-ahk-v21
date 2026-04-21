@@ -153,12 +153,30 @@ export async function boot(): Promise<void> {
         finalizeBoot();
         logCaughtError(BgLogTag.BOOT, `Boot failed at step '${step}'`, err);
 
+        // Persist the failure so the popup can surface it across SW restarts.
+        void persistBootFailure(step, err);
+
         if (manager === null) {
             bindAllHandlers(createUnavailableDbManager(bootErrorMessage));
         }
 
         markInitialized();
         await drainBuffer();
+    }
+}
+
+/** Persists boot failure metadata to chrome.storage.local for popup recovery UI. */
+async function persistBootFailure(step: string, err: unknown): Promise<void> {
+    try {
+        const payload = {
+            step,
+            message: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? (err.stack ?? null) : null,
+            at: new Date().toISOString(),
+        };
+        await chrome.storage.local.set({ marco_last_boot_failure: payload });
+    } catch {
+        // Storage may be unavailable during catastrophic boot failure.
     }
 }
 

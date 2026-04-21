@@ -289,6 +289,8 @@ export interface StatusResponse {
     totalBootMs: number;
     /** Underlying error message if boot failed; null when boot succeeded. */
     bootError: string | null;
+    /** Underlying error stack trace if boot failed; null when unavailable. */
+    bootErrorStack: string | null;
 }
 
 export interface HealthStatusResponse {
