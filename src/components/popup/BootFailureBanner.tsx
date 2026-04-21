@@ -42,6 +42,7 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const [showTrail, setShowTrail] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   if (!bootStep || !bootStep.startsWith("failed:")) return null;
 
@@ -54,10 +55,12 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
 
+  const buildCurrentReport = (): string =>
+    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
+
   const handleCopyReport = async () => {
-    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
     try {
-      await navigator.clipboard.writeText(report);
+      await navigator.clipboard.writeText(buildCurrentReport());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -73,6 +76,35 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
       setTimeout(() => setSqlCopied(false), 2000);
     } catch {
       // Ignore — the snippet stays visible for manual copy.
+    }
+  };
+
+  /**
+   * Saves the same plain-text bundle returned by `buildCurrentReport()` as a
+   * downloadable `.txt` file. Filename embeds the failed step + an ISO-ish
+   * timestamp so multiple reports from the same browser don't clobber each
+   * other in the user's Downloads folder. Uses a transient `<a>` + Blob URL
+   * pattern that works in both the popup and the Lovable preview.
+   */
+  const handleDownloadReport = () => {
+    try {
+      const report = buildCurrentReport();
+      const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeStep = failedStep.replace(/[^a-z0-9-]+/gi, "-");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `marco-support-report-${safeStep}-${stamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Defer revoke so Chrome can finish the download.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 2000);
+    } catch {
+      // Blob/URL may be unavailable in unusual sandboxes — Copy report still works.
     }
   };
 
