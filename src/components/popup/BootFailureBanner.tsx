@@ -456,6 +456,10 @@ interface ReportInput {
   fixSteps: string[];
   trail: ClickTrailEntry[];
   isFrozenTrail: boolean;
+  /** Stable failure fingerprint preserved across SW restarts. */
+  failureId: string | null;
+  /** ISO timestamp of when the failure was first persisted. */
+  failureAt: string | null;
 }
 
 /** Produces a plain-text bundle suitable for clipboard/issue reports. */
@@ -466,6 +470,10 @@ function buildReport(input: ReportInput): string {
   lines.push(`  Generated: ${new Date().toISOString()}`);
   lines.push("═══════════════════════════════════════════");
   lines.push("");
+  // Correlation block — lets support correlate multiple reports from the
+  // same underlying failure (across popup re-opens / SW restarts).
+  lines.push(`Failure ID:     ${input.failureId ?? "(not persisted)"}`);
+  lines.push(`Snapshot at:    ${input.failureAt ?? "(not persisted)"}`);
   lines.push(`Failed step:    ${input.failedStep}`);
   lines.push(`Cause:          ${input.cause.label} (${input.cause.kind})`);
   lines.push(`Error message:  ${input.bootError ?? "(none captured)"}`);
