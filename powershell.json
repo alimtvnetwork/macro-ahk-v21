@@ -4,7 +4,7 @@
   "rootDir": ".",
   "extensionDir": ".",
   "distDir": "dist",
-  "buildCommand": "pnpm run build",
+  "buildCommand": "pnpm run build:extension",
   "devCommand": "pnpm run dev",
   "installCommand": "pnpm install --prod=false",
   "cleanPaths": [
