@@ -157,7 +157,7 @@ function CollapsibleSection({ icon, label, isOpen, onToggle, children }: Collaps
 /*  Cause Classification                                          */
 /* ────────────────────────────────────────────────────────────── */
 
-type CauseKind = "wasm" | "opfs" | "storage" | "migration" | "schema" | "unknown";
+type CauseKind = "wasm-missing" | "wasm" | "opfs" | "storage" | "migration" | "schema" | "unknown";
 
 interface Cause {
   kind: CauseKind;
@@ -166,21 +166,29 @@ interface Cause {
 
 /** Inspects the failed step + error text to classify the root cause. */
 function classifyCause(failedStep: string, bootError: string | null | undefined): Cause {
-  const errorText = (bootError ?? "").toLowerCase();
+  const errorText = (bootError ?? "");
+  const lower = errorText.toLowerCase();
 
-  if (errorText.includes("wasm") || errorText.includes("sql-wasm")) {
+  // Highest priority: the dedicated tag emitted by verifyWasmPresence() when
+  // the packaged WASM file is missing or 404. Match the literal tag so
+  // semantically similar errors (e.g. an OPFS-side WASM mention) don't
+  // accidentally trigger this branch.
+  if (errorText.includes("[WASM_FILE_MISSING_404]") || lower.includes("wasm file missing")) {
+    return { kind: "wasm-missing", label: "WASM file missing" };
+  }
+  if (lower.includes("wasm") || lower.includes("sql-wasm")) {
     return { kind: "wasm", label: "WASM load" };
   }
-  if (errorText.includes("opfs") || errorText.includes("getdirectory") || errorText.includes("navigator.storage")) {
+  if (lower.includes("opfs") || lower.includes("getdirectory") || lower.includes("navigator.storage")) {
     return { kind: "opfs", label: "OPFS" };
   }
-  if (errorText.includes("chrome.storage") || errorText.includes("storage quota") || errorText.includes("quota_bytes")) {
+  if (lower.includes("chrome.storage") || lower.includes("storage quota") || lower.includes("quota_bytes")) {
     return { kind: "storage", label: "chrome.storage" };
   }
-  if (errorText.includes("migration") || errorText.includes("alter table") || errorText.includes("create table")) {
+  if (lower.includes("migration") || lower.includes("alter table") || lower.includes("create table")) {
     return { kind: "migration", label: "Schema migration" };
   }
-  if (failedStep === "db-init" && errorText.includes("schema")) {
+  if (failedStep === "db-init" && lower.includes("schema")) {
     return { kind: "schema", label: "Schema" };
   }
 
