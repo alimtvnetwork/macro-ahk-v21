@@ -493,6 +493,7 @@ export default defineConfig(({ mode }) => {
             validateNoBackgroundDynamicImport(),
             generateBuildMeta(),
             copyProjectScripts(),
+            verifyWasmAsset(),
             // Bundle visualizer — gated behind ANALYZE=1 to keep the output slim.
             // Run `ANALYZE=1 pnpm run build:extension` to generate bundle-report.html.
             process.env.ANALYZE === "1"
