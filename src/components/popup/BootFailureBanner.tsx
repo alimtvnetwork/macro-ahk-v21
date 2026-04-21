@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, MousePointerClick, Code2, ListChecks } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, MousePointerClick, Code2, ListChecks, Database, Terminal } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
+
+/** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
+export interface BootErrorContext {
+  sql: string | null;
+  migrationVersion: number | null;
+  migrationDescription: string | null;
+  scope: string | null;
+}
 
 interface BootFailureBannerProps {
   bootStep?: string;
@@ -8,6 +16,8 @@ interface BootFailureBannerProps {
   bootError?: string | null;
   /** Underlying error stack trace captured by the background service worker. */
   bootErrorStack?: string | null;
+  /** Structured failing-operation context (SQL + migration step), if known. */
+  bootErrorContext?: BootErrorContext | null;
 }
 
 /**
@@ -20,10 +30,11 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
 
   if (!bootStep || !bootStep.startsWith("failed:")) return null;
 
@@ -31,15 +42,27 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack }: BootF
   const cause = classifyCause(failedStep, bootError);
   const fixSteps = getFixSteps(cause);
   const trail = readClickTrail();
+  const ctx = bootErrorContext ?? null;
 
   const handleCopyReport = async () => {
-    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, fixSteps, trail });
+    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail });
     try {
       await navigator.clipboard.writeText(report);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard may be denied; ignore — the textarea fallback below stays visible.
+    }
+  };
+
+  const handleCopySql = async () => {
+    if (ctx?.sql === null || ctx?.sql === undefined) return;
+    try {
+      await navigator.clipboard.writeText(ctx.sql);
+      setSqlCopied(true);
+      setTimeout(() => setSqlCopied(false), 2000);
+    } catch {
+      // Ignore — the snippet stays visible for manual copy.
     }
   };
 
