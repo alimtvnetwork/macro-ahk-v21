@@ -197,7 +197,7 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
       {trail.length > 0 ? (
         <CollapsibleSection
           icon={<MousePointerClick className="h-3 w-3" />}
-          label={`Recent actions (${trail.length})`}
+          label={`Recent actions (${trail.length})${isFrozen ? " — snapshot at failure" : ""}`}
           isOpen={showTrail}
           onToggle={() => setShowTrail((v) => !v)}
         >
