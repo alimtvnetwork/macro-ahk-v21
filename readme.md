@@ -50,25 +50,25 @@
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex
 ```
 
 **Linux / macOS (Bash):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash
 ```
 
 ### Pin a Specific Version
 
 ```powershell
 # PowerShell
-& { $Version = "v2.116.1"; irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.ps1 | iex }
+& { $Version = "v2.116.1"; irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex }
 ```
 
 ```bash
 # Bash
-curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/scripts/install.sh | bash -s -- --version v2.116.1
+curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash -s -- --version v2.116.1
 ```
 
 ### Custom Directory Install
@@ -93,7 +93,7 @@ curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/sc
 |------|-------------|---------|
 | `-Version` | Pin a specific release | `-Version v2.116.1` |
 | `-InstallDir` | Custom install directory | `-InstallDir D:\marco-extension\v2.116.1` |
-| `-Repo` | Override GitHub repository | `-Repo alimtvnetwork/macro-ahk-v15` |
+| `-Repo` | Override GitHub repository | `-Repo alimtvnetwork/macro-ahk-v21` |
 
 **Linux / macOS (Bash):**
 
@@ -101,11 +101,11 @@ curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v15/main/sc
 |------|-------------|---------|
 | `--version` | Pin a specific release | `--version v2.116.1` |
 | `--dir` | Custom install directory | `--dir ~/marco-extension/v2.116.1` |
-| `--repo` | Override GitHub repository | `--repo alimtvnetwork/macro-ahk-v15` |
+| `--repo` | Override GitHub repository | `--repo alimtvnetwork/macro-ahk-v21` |
 
 ### Manual Install
 
-1. Download `marco-extension-v{VERSION}.zip` from [Releases](https://github.com/alimtvnetwork/macro-ahk-v15/releases)
+1. Download `marco-extension-v{VERSION}.zip` from [Releases](https://github.com/alimtvnetwork/macro-ahk-v21/releases)
 2. Extract to a folder (e.g., `D:\marco-extension\v2.116.1`)
 3. Open `chrome://extensions` (or `edge://extensions`)
 4. Enable **Developer mode** (toggle in top-right)
@@ -391,7 +391,7 @@ Pushing to a `release/*` branch (e.g., `release/v2.117.0`) automatically:
 8. Generates categorized release notes from commit history with Bash + PowerShell install commands
 9. Creates a GitHub Release with all assets attached
 
-**No email or notification is sent** — check the [Releases page](https://github.com/alimtvnetwork/macro-ahk-v15/releases) for status.
+**No email or notification is sent** — check the [Releases page](https://github.com/alimtvnetwork/macro-ahk-v21/releases) for status.
 
 ### Release Assets
 
@@ -411,13 +411,13 @@ Pushing to a `release/*` branch (e.g., `release/v2.117.0`) automatically:
 **Windows (PowerShell)**
 
 ```powershell
-irm https://github.com/alimtvnetwork/macro-ahk-v15/releases/download/v{VER}/install.ps1 | iex
+irm https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v{VER}/install.ps1 | iex
 ```
 
 **Linux / macOS**
 
 ```bash
-curl -fsSL https://github.com/alimtvnetwork/macro-ahk-v15/releases/download/v{VER}/install.sh | bash
+curl -fsSL https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v{VER}/install.sh | bash
 ```
 
 ---

@@ -7,12 +7,15 @@
  * Chains are project-scoped — a project selector dropdown filters chains.
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { sendMessage } from "@/lib/message-client";
 import type { AutomationChain, ChainExecutionState } from "@/lib/automation-types";
 import { flattenSteps, STEP_TYPE_META } from "@/lib/automation-types";
 import { ChainRunner } from "@/lib/chain-runner";
-import { ChainBuilder } from "@/components/automation/ChainBuilder";
+// Lazy — pulls in @dnd-kit/{core,sortable,utilities} (~80 kB) only when the editor opens.
+const ChainBuilder = lazy(() =>
+  import("@/components/automation/ChainBuilder").then((m) => ({ default: m.ChainBuilder })),
+);
 import { StepCard } from "@/components/automation/StepCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -321,11 +324,13 @@ export function AutomationView() {
 
           {/* Editor */}
           {editing && (
-            <ChainBuilder
-              chain={editing === "new" ? undefined : editing}
-              onSave={handleSave}
-              onCancel={() => setEditing(null)}
-            />
+            <Suspense fallback={<div className="text-xs text-muted-foreground p-3">Loading editor…</div>}>
+              <ChainBuilder
+                chain={editing === "new" ? undefined : editing}
+                onSave={handleSave}
+                onCancel={() => setEditing(null)}
+              />
+            </Suspense>
           )}
 
           {/* Chain list */}
