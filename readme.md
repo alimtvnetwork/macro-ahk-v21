@@ -37,7 +37,13 @@
   <img src="docs/assets/marco-extension-hero.png" alt="Marco Chrome Extension — Projects view inside the options page" width="820" />
 </p>
 
-> **Note on report cards** — TypeScript/Node has no exact equivalent of [Go Report Card](https://goreportcard.com/). The closest analogues are **CodeFactor** (auto-grades any GitHub repo, no signup required for the badge), **Codacy**, and **Code Climate Maintainability** — all wired up above. Replace `PROJECT_ID` in the Codacy badge with your project's UUID after activating the repo at [app.codacy.com](https://app.codacy.com/).
+> **Report cards — activation status**
+>
+> - **CodeFactor** — ✅ live; grades automatically with no signup required.
+> - **Codacy** — ⏳ pending owner activation. Sign in at [app.codacy.com](https://app.codacy.com/) with the GitHub account that owns this repo, click **Add organization** → **macro-ahk-v21** → **Add project**. Once the first analysis completes, replace the placeholder badge with the live grade badge from **Project → Settings → General → Badges** (the URL contains your project UUID, e.g. `https://app.codacy.com/project/badge/Grade/<UUID>`).
+> - **Code Climate Maintainability** — ⏳ pending owner activation. Sign in at [codeclimate.com/quality](https://codeclimate.com/quality) → **Add a repository** → select **macro-ahk-v21**. After the first analysis, replace the placeholder badge with `https://api.codeclimate.com/v1/badges/<TOKEN>/maintainability` (find the token under **Repo Settings → Badges**).
+>
+> Both Codacy and Code Climate require OAuth signup with the repo owner's GitHub account, so they cannot be activated automatically — the placeholders above link to the activation pages.
 
 **Current Version:** v2.158.0 | **Macro Controller:** v7.41
 
