@@ -18,6 +18,13 @@ interface BootFailureBannerProps {
   bootErrorStack?: string | null;
   /** Structured failing-operation context (SQL + migration step), if known. */
   bootErrorContext?: BootErrorContext | null;
+  /**
+   * Trail of UI actions captured at the moment of failure. When provided,
+   * the banner renders this snapshot INSTEAD of the live sessionStorage
+   * trail so the "Recent actions" section stays pinned to the failure
+   * cause across popup re-opens. Falls back to live trail when null.
+   */
+  frozenTrail?: ClickTrailEntry[] | null;
 }
 
 /**
@@ -30,7 +37,7 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, frozenTrail }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -41,7 +48,10 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const failedStep = bootStep.replace("failed:", "");
   const cause = classifyCause(failedStep, bootError);
   const fixSteps = getFixSteps(cause);
-  const trail = readClickTrail();
+  // Prefer the frozen snapshot (captured at moment of failure) — fall back to
+  // the live trail only when no snapshot was preserved (e.g. preview context).
+  const trail = frozenTrail ?? readClickTrail();
+  const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
 
   const handleCopyReport = async () => {
