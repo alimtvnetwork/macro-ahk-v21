@@ -53,28 +53,38 @@
 
 ### One-Liner Install
 
-**Windows (PowerShell):**
+The unified installer auto-derives the pinned version from its download URL. Use a **release-asset URL** to pin to that exact release, or use **`raw.githubusercontent.com/.../main/`** for the auto-update channel.
+
+#### 🔒 Pinned to a specific release
+
+```powershell
+# PowerShell (Windows) — replace v2.158.0 with any released tag
+irm https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v2.158.0/install.ps1 | iex
+```
+
+```bash
+# Bash (Linux / macOS)
+curl -fsSL https://github.com/alimtvnetwork/macro-ahk-v21/releases/download/v2.158.0/install.sh | bash
+```
+
+#### 🌊 Latest channel (auto-update)
 
 ```powershell
 irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex
 ```
 
-**Linux / macOS (Bash):**
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash
 ```
 
-### Pin a Specific Version
+#### Override the resolved version
 
 ```powershell
-# PowerShell
-& { $Version = "v2.116.1"; irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex }
+& { $Version = "v2.150.0"; irm https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.ps1 | iex }
 ```
 
 ```bash
-# Bash
-curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash -s -- --version v2.116.1
+curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/macro-ahk-v21/main/scripts/install.sh | bash -s -- --version v2.150.0
 ```
 
 ### Custom Directory Install
