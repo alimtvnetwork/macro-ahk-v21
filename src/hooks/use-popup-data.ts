@@ -190,6 +190,7 @@ export function usePopupData() {
   const effectiveBootError = status?.bootError ?? persistedFailure?.message ?? null;
   const effectiveBootErrorStack = status?.bootErrorStack ?? persistedFailure?.stack ?? null;
   const effectiveBootErrorContext = status?.bootErrorContext ?? persistedFailure?.context ?? null;
+  const effectiveWasmProbe = status?.wasmProbe ?? persistedFailure?.wasmProbe ?? null;
 
   return {
     projectData,
@@ -210,6 +211,8 @@ export function usePopupData() {
     effectiveBootError,
     effectiveBootErrorStack,
     effectiveBootErrorContext,
+    /** WASM HEAD probe snapshot — captured at boot, persisted across SW restarts. */
+    effectiveWasmProbe,
   };
 }
 
