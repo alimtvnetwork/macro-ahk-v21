@@ -126,14 +126,24 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
             </p>
           ) : null}
         </div>
-        <button
-          onClick={handleCopyReport}
-          className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
-          title="Copy full diagnostic report to clipboard"
-        >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied" : "Copy report"}
-        </button>
+        <div className="shrink-0 flex items-center gap-1.5">
+          <button
+            onClick={handleCopyReport}
+            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
+            title="Copy full diagnostic report to clipboard"
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            {copied ? "Copied" : "Copy report"}
+          </button>
+          <button
+            onClick={handleDownloadReport}
+            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
+            title="Download full diagnostic report as a .txt file (includes stack trace + click trail)"
+          >
+            {downloaded ? <Check className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+            {downloaded ? "Saved" : "Create support report"}
+          </button>
+        </div>
       </div>
 
       {/* ── Failing operation (SQL / migration step) ───────── */}
