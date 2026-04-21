@@ -110,8 +110,10 @@ export function useActivityTimeline(limit = 500) {
         kind: "error" as const,
       }));
 
-      setLogs(mappedLogs);
-      setErrors(mappedErrors);
+      // Drop benign-warning noise BEFORE merging so it cannot inflate
+      // counts, badges, or the drawer list. See BENIGN_WARNING_PATTERNS.
+      setLogs(mappedLogs.filter((e) => !isBenignWarning(e)));
+      setErrors(mappedErrors.filter((e) => !isBenignWarning(e)));
     } catch {
       // Preview mode — use empty arrays
       setLogs([]);
