@@ -100,12 +100,15 @@ function Install-RootBuildDependencies([string]$RootDir) {
 
     $needsRootInstall = (-not (Test-Path $rootNodeModules)) -or ($missingRootBuildPackages.Count -gt 0)
     if ($needsRootInstall) {
-        Write-Host "  Installing root-level dependencies for standalone builds..." -ForegroundColor Yellow
+        Write-Host "  Installing root-level dependencies for standalone builds (pnpm)..." -ForegroundColor Yellow
         Push-Location $RootDir
         try {
-            $rootInstallResult = npm install --include=dev 2>&1
+            # Use pnpm (not npm) — the project's .npmrc contains pnpm-only keys
+            # (node-linker, store-dir, virtual-store-dir, ...) which trigger
+            # "Unknown config" warnings when npm parses them.
+            $rootInstallResult = pnpm install --prod=false 2>&1
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "  [FAIL] Root npm install failed" -ForegroundColor Red
+                Write-Host "  [FAIL] Root pnpm install failed" -ForegroundColor Red
                 foreach ($line in $rootInstallResult) { Write-Host "    $line" -ForegroundColor DarkGray }
                 exit 2
             }
@@ -125,7 +128,7 @@ function Install-RootBuildDependencies([string]$RootDir) {
                 exit 2
             }
 
-            Write-Host "  [OK] Root dependencies installed and verified" -ForegroundColor Green
+            Write-Host "  [OK] Root dependencies installed and verified (pnpm)" -ForegroundColor Green
         } finally { Pop-Location }
     } elseif ($script:verbose) {
         Write-Host "  [OK] Root node_modules + build deps present" -ForegroundColor Green
