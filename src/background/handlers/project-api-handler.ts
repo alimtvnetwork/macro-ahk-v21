@@ -242,7 +242,6 @@ function handleSchemaCommand(
 
 async function markAndFlush(slug: string): Promise<void> {
     // Debounced flush via the project db manager
-    const { initProjectDb: init } = await import("../project-db-manager");
-    const manager = await init(slug);
+    const manager = await initProjectDb(slug);
     manager.markDirty();
 }
