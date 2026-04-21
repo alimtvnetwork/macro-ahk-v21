@@ -191,6 +191,10 @@ export function usePopupData() {
   const effectiveBootErrorStack = status?.bootErrorStack ?? persistedFailure?.stack ?? null;
   const effectiveBootErrorContext = status?.bootErrorContext ?? persistedFailure?.context ?? null;
   const effectiveWasmProbe = status?.wasmProbe ?? persistedFailure?.wasmProbe ?? null;
+  // Stable correlation handles for support reports — preserved across SW
+  // restarts and popup re-opens via marco_last_boot_failure.
+  const effectiveFailureId = persistedFailure?.failureId ?? null;
+  const effectiveFailureAt = persistedFailure?.at ?? null;
 
   return {
     projectData,
@@ -213,6 +217,10 @@ export function usePopupData() {
     effectiveBootErrorContext,
     /** WASM HEAD probe snapshot — captured at boot, persisted across SW restarts. */
     effectiveWasmProbe,
+    /** Stable failure fingerprint (`failed:<step>|<msg-prefix>`) — null when boot succeeded or no record persisted. */
+    effectiveFailureId,
+    /** ISO timestamp of when the failure was first persisted. */
+    effectiveFailureAt,
   };
 }
 

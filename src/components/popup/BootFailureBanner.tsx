@@ -41,6 +41,14 @@ interface BootFailureBannerProps {
    * cause across popup re-opens. Falls back to live trail when null.
    */
   frozenTrail?: ClickTrailEntry[] | null;
+  /**
+   * Stable failure fingerprint (`failed:<step>|<msg-prefix>`) — included in
+   * support reports so multiple bundles from the same underlying failure
+   * can be correlated across popup re-opens and SW restarts.
+   */
+  failureId?: string | null;
+  /** ISO timestamp of when the failure was first persisted (snapshot time). */
+  failureAt?: string | null;
 }
 
 /**
@@ -53,7 +61,7 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, wasmProbe, frozenTrail }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, wasmProbe, frozenTrail, failureId, failureAt }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [showProbe, setShowProbe] = useState(true);
@@ -72,9 +80,11 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
   const probe = wasmProbe ?? null;
+  const failId = failureId ?? null;
+  const failAt = failureAt ?? null;
 
   const buildCurrentReport = (): string =>
-    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen });
+    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen, failureId: failId, failureAt: failAt });
 
   const handleCopyReport = async () => {
     try {
@@ -446,6 +456,10 @@ interface ReportInput {
   fixSteps: string[];
   trail: ClickTrailEntry[];
   isFrozenTrail: boolean;
+  /** Stable failure fingerprint preserved across SW restarts. */
+  failureId: string | null;
+  /** ISO timestamp of when the failure was first persisted. */
+  failureAt: string | null;
 }
 
 /** Produces a plain-text bundle suitable for clipboard/issue reports. */
@@ -456,6 +470,10 @@ function buildReport(input: ReportInput): string {
   lines.push(`  Generated: ${new Date().toISOString()}`);
   lines.push("═══════════════════════════════════════════");
   lines.push("");
+  // Correlation block — lets support correlate multiple reports from the
+  // same underlying failure (across popup re-opens / SW restarts).
+  lines.push(`Failure ID:     ${input.failureId ?? "(not persisted)"}`);
+  lines.push(`Snapshot at:    ${input.failureAt ?? "(not persisted)"}`);
   lines.push(`Failed step:    ${input.failedStep}`);
   lines.push(`Cause:          ${input.cause.label} (${input.cause.kind})`);
   lines.push(`Error message:  ${input.bootError ?? "(none captured)"}`);
