@@ -107,3 +107,4 @@ standalone-scripts/macro-controller/01-macro-looping.js
 pnpm-workspace.yaml
 pnpm-lock.yaml
 .npmrc
+scripts/check-spec-links.baseline.json
