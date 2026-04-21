@@ -344,6 +344,7 @@ interface ReportInput {
   cause: Cause;
   bootError: string | null | undefined;
   bootErrorStack: string | null | undefined;
+  bootErrorContext: BootErrorContext | null;
   fixSteps: string[];
   trail: ClickTrailEntry[];
 }
@@ -360,6 +361,27 @@ function buildReport(input: ReportInput): string {
   lines.push(`Cause:          ${input.cause.label} (${input.cause.kind})`);
   lines.push(`Error message:  ${input.bootError ?? "(none captured)"}`);
   lines.push("");
+
+  if (input.bootErrorContext !== null) {
+    lines.push("── Failing operation ─────────────────────");
+    if (input.bootErrorContext.migrationVersion !== null) {
+      lines.push(`  Migration:  v${input.bootErrorContext.migrationVersion}`);
+    }
+    if (input.bootErrorContext.migrationDescription !== null) {
+      lines.push(`  Step:       ${input.bootErrorContext.migrationDescription}`);
+    }
+    if (input.bootErrorContext.scope !== null) {
+      lines.push(`  Scope:      ${input.bootErrorContext.scope}`);
+    }
+    if (input.bootErrorContext.sql !== null) {
+      lines.push(`  SQL:`);
+      input.bootErrorContext.sql.split("\n").forEach((line) => {
+        lines.push(`    ${line}`);
+      });
+    }
+    lines.push("");
+  }
+
   lines.push("── Suggested fix ─────────────────────────");
   input.fixSteps.forEach((step, idx) => {
     lines.push(`  ${idx + 1}. ${step}`);
