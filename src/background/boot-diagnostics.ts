@@ -23,6 +23,8 @@ let bootPersistenceMode: "opfs" | "storage" | "memory" = "memory";
 const bootTimings: BootTiming[] = [];
 let stepStartTime = performance.now();
 let totalBootMs = 0;
+let bootErrorMessage: string | null = null;
+let bootErrorStack: string | null = null;
 
 /* ------------------------------------------------------------------ */
 /*  Boot Step                                                          */
@@ -81,4 +83,29 @@ export function getBootTimings(): BootTiming[] {
 /** Returns total boot duration in milliseconds. */
 export function getTotalBootMs(): number {
     return totalBootMs;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Boot Error                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Records the underlying error that caused boot to fail at the current step. */
+export function setBootError(error: unknown): void {
+    if (error instanceof Error) {
+        bootErrorMessage = error.message;
+        bootErrorStack = error.stack ?? null;
+    } else {
+        bootErrorMessage = String(error);
+        bootErrorStack = null;
+    }
+}
+
+/** Returns the human-readable boot error message, or null if boot succeeded. */
+export function getBootErrorMessage(): string | null {
+    return bootErrorMessage;
+}
+
+/** Returns the boot error stack trace, or null if unavailable. */
+export function getBootErrorStack(): string | null {
+    return bootErrorStack;
 }

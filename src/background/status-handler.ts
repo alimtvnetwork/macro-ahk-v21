@@ -7,7 +7,7 @@
 import type { StatusResponse } from "../shared/messages";
 import { EXTENSION_VERSION } from "../shared/constants";
 import { getHealthState } from "./state-manager";
-import { getBootStep, getBootPersistenceMode, getBootTimings, getTotalBootMs } from "./boot-diagnostics";
+import { getBootStep, getBootPersistenceMode, getBootTimings, getTotalBootMs, getBootErrorMessage } from "./boot-diagnostics";
 import { getConfigFetchStatus } from "./handlers/config-auth-handler";
 import { readCookieFromCandidates, type ChromeCookie } from "./cookie-helpers";
 import { logCaughtError, BgLogTag} from "./bg-logger";
@@ -32,6 +32,7 @@ export async function buildStatusResponse(): Promise<StatusResponse> {
         persistenceMode: getBootPersistenceMode(),
         bootTimings: getBootTimings(),
         totalBootMs: getTotalBootMs(),
+        bootError: getBootErrorMessage(),
     };
 }
 

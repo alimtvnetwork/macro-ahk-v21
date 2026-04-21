@@ -287,6 +287,8 @@ export interface StatusResponse {
     persistenceMode: "opfs" | "storage" | "memory";
     bootTimings: BootTiming[];
     totalBootMs: number;
+    /** Underlying error message if boot failed; null when boot succeeded. */
+    bootError: string | null;
 }
 
 export interface HealthStatusResponse {

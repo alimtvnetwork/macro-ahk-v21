@@ -29,7 +29,7 @@ import {
     ensureDefaultProjectSingleScript,
 } from "./default-project-seeder";
 import { seedFromManifest } from "./manifest-seeder";
-import { setBootStep, setBootPersistenceMode, finalizeBoot } from "./boot-diagnostics";
+import { setBootStep, setBootPersistenceMode, finalizeBoot, setBootError } from "./boot-diagnostics";
 import { configureUserScriptWorld } from "./csp-fallback";
 import { markInitialized, drainBuffer } from "./message-buffer";
 import { cacheScriptCode, getCachedScriptCode, purgeStaleEntries, syncCacheWithBuildId, invalidateCacheOnDeploy } from "./injection-cache";
@@ -149,6 +149,7 @@ export async function boot(): Promise<void> {
         const bootErrorMessage = formatBootError(step, err);
 
         setBootStep(`failed:${step}`);
+        setBootError(err);
         finalizeBoot();
         logCaughtError(BgLogTag.BOOT, `Boot failed at step '${step}'`, err);
 
