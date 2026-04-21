@@ -22,6 +22,8 @@ import { readAllProjects, writeAllProjects } from "./handlers/project-helpers";
 import { nowTimestamp } from "../shared/utils";
 import { seedFromManifest } from "./manifest-seeder";
 import { bootReady } from "./boot";
+import { invalidateCacheOnDeploy } from "./injection-cache";
+import { warmScriptCache } from "./cache-warmer";
 import {
     handleListUpdaters,
     handleCreateUpdater,
@@ -96,7 +98,6 @@ async function handleInstalled(
     await bootReady;
     // ✅ 88.3: Invalidate IndexedDB cache on install/update
     try {
-        const { invalidateCacheOnDeploy } = await import("./injection-cache");
         await invalidateCacheOnDeploy(details.reason);
     } catch (err) {
         logCaughtError(BgLogTag.SEEDER, "Cache invalidation failed", err);
@@ -118,7 +119,6 @@ async function handleInstalled(
 
     // ✅ Pre-warm IndexedDB cache so scripts are ready for instant injection
     try {
-        const { warmScriptCache } = await import("./cache-warmer");
         const result = await warmScriptCache();
         console.log("[seeder] Cache warm complete: %d warmed, %d failed", result.warmed, result.failed);
     } catch (err) {

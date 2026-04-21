@@ -113,7 +113,11 @@ import {
     handleSavePrompt,
     handleDeletePrompt,
     handleReorderPrompts,
+    reseedPrompts,
 } from "./handlers/prompt-handler";
+
+import { cacheClearAll, cacheStats } from "./injection-cache";
+import { handleDynamicRequire } from "./handlers/dynamic-require-handler";
 
 import {
     handleGetPromptChains,
@@ -367,7 +371,7 @@ export const HANDLER_REGISTRY = new Map<MessageType, MessageHandler>([
     [MessageType.SAVE_PROMPT, async (msg) => handleSavePrompt(msg)],
     [MessageType.DELETE_PROMPT, async (msg) => handleDeletePrompt(msg)],
     [MessageType.REORDER_PROMPTS, async (msg) => handleReorderPrompts(msg)],
-    [MessageType.RESEED_PROMPTS, async () => { const { reseedPrompts } = await import("./handlers/prompt-handler"); await reseedPrompts(); return { isOk: true }; }],
+    [MessageType.RESEED_PROMPTS, async () => { await reseedPrompts(); return { isOk: true }; }],
     [MessageType.GET_PROMPT_CHAINS, async () => handleGetPromptChains()],
     [MessageType.SAVE_PROMPT_CHAIN, async (msg) => handleSavePromptChain(msg)],
     [MessageType.DELETE_PROMPT_CHAIN, async (msg) => handleDeletePromptChain(msg)],
@@ -459,18 +463,15 @@ export const HANDLER_REGISTRY = new Map<MessageType, MessageHandler>([
     [MessageType.IMPORT_AUTOMATION_CHAINS, async (msg) => handleImportAutomationChains(msg)],
     // ─── Cache Management (Issue 88) ───
     [MessageType.INVALIDATE_CACHE, async () => {
-        const { cacheClearAll } = await import("./injection-cache");
         const result = await cacheClearAll();
         return { isOk: true, cleared: result.cleared };
     }],
     [MessageType.GET_CACHE_STATS, async () => {
-        const { cacheStats } = await import("./injection-cache");
         const stats = await cacheStats();
         return { isOk: true, ...stats };
     }],
     // ─── Dynamic Script Loading ───
     [MessageType.DYNAMIC_REQUIRE, async (msg) => {
-        const { handleDynamicRequire } = await import("./handlers/dynamic-require-handler");
         return handleDynamicRequire(msg);
     }],
     // ─── Cross-Project Sync (Spec 13) ───

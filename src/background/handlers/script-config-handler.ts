@@ -10,6 +10,7 @@
 
 import type { MessageRequest, OkResponse } from "../../shared/messages";
 import type { StoredScript, StoredConfig } from "../../shared/script-config-types";
+import { handleGetAllProjects } from "./project-handler";
 
 const STORAGE_KEY_SCRIPTS = "marco_scripts";
 const STORAGE_KEY_CONFIGS = "marco_configs";
@@ -272,7 +273,6 @@ export async function handleOptionsBootstrap(): Promise<{
         readAllConfigs(),
     ]);
     // Projects are read from the project handler to include default seeding
-    const { handleGetAllProjects } = await import("./project-handler");
     const { projects } = await handleGetAllProjects();
     return { projects, scripts, configs };
 }
