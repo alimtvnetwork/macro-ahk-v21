@@ -41,6 +41,14 @@ interface BootFailureBannerProps {
    * cause across popup re-opens. Falls back to live trail when null.
    */
   frozenTrail?: ClickTrailEntry[] | null;
+  /**
+   * Stable failure fingerprint (`failed:<step>|<msg-prefix>`) — included in
+   * support reports so multiple bundles from the same underlying failure
+   * can be correlated across popup re-opens and SW restarts.
+   */
+  failureId?: string | null;
+  /** ISO timestamp of when the failure was first persisted (snapshot time). */
+  failureAt?: string | null;
 }
 
 /**
@@ -53,7 +61,7 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, wasmProbe, frozenTrail }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, wasmProbe, frozenTrail, failureId, failureAt }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [showProbe, setShowProbe] = useState(true);
@@ -72,9 +80,11 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
   const probe = wasmProbe ?? null;
+  const failId = failureId ?? null;
+  const failAt = failureAt ?? null;
 
   const buildCurrentReport = (): string =>
-    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen });
+    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen, failureId: failId, failureAt: failAt });
 
   const handleCopyReport = async () => {
     try {

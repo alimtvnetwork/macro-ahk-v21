@@ -49,6 +49,8 @@ const PopupPage = () => {
     effectiveBootErrorStack,
     effectiveBootErrorContext,
     effectiveWasmProbe,
+    effectiveFailureId,
+    effectiveFailureAt,
   } = usePopupData();
 
   const versionCheck = useVersionCheck();
@@ -92,6 +94,8 @@ const PopupPage = () => {
           bootErrorContext={effectiveBootErrorContext}
           wasmProbe={effectiveWasmProbe}
           frozenTrail={frozenTrail}
+          failureId={effectiveFailureId}
+          failureAt={effectiveFailureAt}
         />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {status && health ? (
