@@ -2,7 +2,44 @@
 
 > **Browser automation for workspace management, credit monitoring, and AI-driven macro execution** — built as a Manifest V3 Chrome extension with a modular standalone script architecture.
 
-**Current Version:** v2.116.1 | **Macro Controller:** v7.41
+<div align="center">
+
+<!-- Build & Release -->
+[![CI](https://img.shields.io/github/actions/workflow/status/alimtvnetwork/macro-ahk-v21/ci.yml?branch=main&label=CI&logo=github&style=flat-square)](https://github.com/alimtvnetwork/macro-ahk-v21/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/alimtvnetwork/macro-ahk-v21/release.yml?label=release&logo=github&style=flat-square)](https://github.com/alimtvnetwork/macro-ahk-v21/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/alimtvnetwork/macro-ahk-v21?include_prereleases&sort=semver&label=latest&logo=github&style=flat-square)](https://github.com/alimtvnetwork/macro-ahk-v21/releases/latest)
+[![Release Date](https://img.shields.io/github/release-date/alimtvnetwork/macro-ahk-v21?label=released&style=flat-square)](https://github.com/alimtvnetwork/macro-ahk-v21/releases/latest)
+
+<!-- Repo activity -->
+[![Last Commit](https://img.shields.io/github/last-commit/alimtvnetwork/macro-ahk-v21/main?style=flat-square&logo=git)](https://github.com/alimtvnetwork/macro-ahk-v21/commits/main)
+[![Commit Activity](https://img.shields.io/github/commit-activity/m/alimtvnetwork/macro-ahk-v21?style=flat-square)](https://github.com/alimtvnetwork/macro-ahk-v21/pulse)
+[![Issues](https://img.shields.io/github/issues/alimtvnetwork/macro-ahk-v21?style=flat-square&logo=github)](https://github.com/alimtvnetwork/macro-ahk-v21/issues)
+[![Repo Size](https://img.shields.io/github/repo-size/alimtvnetwork/macro-ahk-v21?style=flat-square)](https://github.com/alimtvnetwork/macro-ahk-v21)
+
+<!-- Code-quality report cards (TS/JS analogues to Go Report Card) -->
+[![CodeFactor](https://img.shields.io/codefactor/grade/github/alimtvnetwork/macro-ahk-v21/main?label=CodeFactor&logo=codefactor&style=flat-square)](https://www.codefactor.io/repository/github/alimtvnetwork/macro-ahk-v21)
+[![Codacy](https://img.shields.io/codacy/grade/PROJECT_ID?label=Codacy&logo=codacy&style=flat-square)](https://app.codacy.com/gh/alimtvnetwork/macro-ahk-v21/dashboard)
+[![Maintainability](https://img.shields.io/codeclimate/maintainability/alimtvnetwork/macro-ahk-v21?label=Code%20Climate&logo=code-climate&style=flat-square)](https://codeclimate.com/github/alimtvnetwork/macro-ahk-v21/maintainability)
+
+<!-- Stack & standards -->
+[![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/intro/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/Node-20%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9-F69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![ESLint + SonarJS](https://img.shields.io/badge/ESLint-SonarJS%20%E2%80%A2%20zero%20warnings-4B32C3?style=flat-square&logo=eslint&logoColor=white)](./eslint.config.js)
+[![Tested with Vitest](https://img.shields.io/badge/tested%20with-Vitest-6E9F18?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![License: Proprietary](https://img.shields.io/badge/license-Proprietary-red?style=flat-square)](#license)
+
+</div>
+
+<p align="center">
+  <img src="docs/assets/marco-extension-hero.png" alt="Marco Chrome Extension — Projects view inside the options page" width="820" />
+</p>
+
+> **Note on report cards** — TypeScript/Node has no exact equivalent of [Go Report Card](https://goreportcard.com/). The closest analogues are **CodeFactor** (auto-grades any GitHub repo, no signup required for the badge), **Codacy**, and **Code Climate Maintainability** — all wired up above. Replace `PROJECT_ID` in the Codacy badge with your project's UUID after activating the repo at [app.codacy.com](https://app.codacy.com/).
+
+**Current Version:** v2.158.0 | **Macro Controller:** v7.41
 
 ---
 
