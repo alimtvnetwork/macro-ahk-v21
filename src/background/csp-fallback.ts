@@ -89,7 +89,12 @@ export async function configureUserScriptWorld(): Promise<void> {
 
     try {
         if (typeof chrome.userScripts?.configureWorld !== "function") {
-            console.debug("[injection:csp] chrome.userScripts.configureWorld unavailable — will use default USER_SCRIPT world when possible");
+            // Chrome <135 / non-Chromium browsers: configureWorld API does not
+            // exist. This is an EXPECTED operational state — the fallback
+            // injector simply uses the default USER_SCRIPT world. Logging
+            // anything here (even console.debug) gets surfaced in the popup
+            // Errors panel by upstream tooling, alarming users for no reason.
+            // Stay silent: success path below logs ✅, failure path logs ❌.
             userScriptsWorldConfigured = true;
             userScriptsWorldIdEnabled = false;
             return;
