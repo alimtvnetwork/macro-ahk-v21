@@ -135,19 +135,54 @@ function buildBadges({ codacy, codeclimate, repo, branch }) {
   return out;
 }
 
+/**
+ * Probe a single URL: try HEAD first (cheap), then fall back to GET if HEAD
+ * fails or returns a non-2xx (Shields/Codacy occasionally 405/403 on HEAD).
+ * Returns { ok, status, method, finalUrl, ms, error }.
+ */
+async function probeUrl(url) {
+  const attempt = async (method) => {
+    const start = performance.now();
+    try {
+      // `redirect: "follow"` is the fetch default, but we set it explicitly so
+      // res.url reflects the final resolved location after any redirects.
+      const res = await fetch(url, { method, redirect: "follow" });
+      const ms = Math.round(performance.now() - start);
+      return { ok: res.ok, status: res.status, method, finalUrl: res.url || url, ms, error: null };
+    } catch (err) {
+      const ms = Math.round(performance.now() - start);
+      return { ok: false, status: 0, method, finalUrl: url, ms, error: err.message };
+    }
+  };
+
+  const head = await attempt("HEAD");
+  if (head.ok) return head;
+  // Retry with GET — many CDN-fronted badge endpoints reject or mis-cache HEAD.
+  const get = await attempt("GET");
+  // Prefer the GET result (it's the authoritative one), but annotate that HEAD was tried.
+  return { ...get, retried: true, headStatus: head.status, headError: head.error };
+}
+
 async function checkBadgeUrls(badges) {
   let allOk = true;
   console.log("\n## URL reachability\n");
   for (const b of badges) {
-    try {
-      const res = await fetch(b.shieldsUrl, { method: "HEAD" });
-      const ok = res.ok;
-      console.log(`  ${ok ? "✓" : "✗"} ${res.status}  ${b.label}`);
-      if (!ok) allOk = false;
-    } catch (err) {
-      console.log(`  ✗ ERR  ${b.label} — ${err.message}`);
-      allOk = false;
+    const r = await probeUrl(b.shieldsUrl);
+    const icon = r.ok ? "✓" : "✗";
+    const statusText = r.status === 0 ? "ERR" : String(r.status);
+    const retryNote = r.retried
+      ? ` (HEAD ${r.headError ? `err: ${r.headError}` : r.headStatus} → GET)`
+      : "";
+    console.log(`  ${icon} ${statusText.padStart(3)} ${String(r.ms).padStart(5)}ms  ${b.label}${retryNote}`);
+    if (r.finalUrl && r.finalUrl !== b.shieldsUrl) {
+      console.log(`         → resolved: ${r.finalUrl}`);
+    } else {
+      console.log(`         → url:      ${b.shieldsUrl}`);
     }
+    if (r.error) {
+      console.log(`         → error:    ${r.error}`);
+    }
+    if (!r.ok) allOk = false;
   }
   return allOk;
 }
