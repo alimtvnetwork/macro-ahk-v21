@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal, FileWarning } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal, FileWarning, ShieldOff } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
+import { useBenignWarningStats } from "@/hooks/use-benign-warning-stats";
+import type { BenignWarningTally } from "@/lib/benign-warnings";
 
 /** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
 export interface BootErrorContext {
@@ -65,9 +67,14 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [showProbe, setShowProbe] = useState(true);
+  const [showSuppressed, setShowSuppressed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  // Tally of warnings the activity timeline filtered out — disclosed in the
+  // support report so the suppression is auditable. `bumpKey` is keyed on
+  // `bootStep` so the count refreshes when the failure identity changes.
+  const benignTally = useBenignWarningStats(bootStep === undefined ? 0 : bootStep.length);
 
   if (!bootStep || !bootStep.startsWith("failed:")) return null;
 
@@ -84,7 +91,11 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const failAt = failureAt ?? null;
 
   const buildCurrentReport = (): string =>
-    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen, failureId: failId, failureAt: failAt });
+    buildReport({
+      failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe,
+      fixSteps, trail, isFrozenTrail: isFrozen, failureId: failId, failureAt: failAt,
+      benignTally,
+    });
 
   const handleCopyReport = async () => {
     try {
@@ -256,6 +267,28 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
               </div>
             ) : null}
           </div>
+        </CollapsibleSection>
+      ) : null}
+
+      {/* ── Filtered benign warnings (always shown when SW logs reachable) ─ */}
+      {benignTally.matched.length > 0 ? (
+        <CollapsibleSection
+          icon={<ShieldOff className="h-3 w-3" />}
+          label={`Filtered benign warnings (${benignTally.total})`}
+          isOpen={showSuppressed}
+          onToggle={() => setShowSuppressed((v) => !v)}
+        >
+          <ul className="text-[10px] font-mono text-destructive/80 bg-background/40 rounded p-2 space-y-1 border border-destructive/20">
+            {benignTally.matched.map((m) => (
+              <li key={m.id} className="flex gap-2">
+                <span className="shrink-0 text-destructive/60">[{m.count}×]</span>
+                <span className="break-words">
+                  <span className="text-destructive/70">{m.id}</span>
+                  <span className="text-destructive/60"> — {m.label}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </CollapsibleSection>
       ) : null}
 
@@ -460,6 +493,8 @@ interface ReportInput {
   failureId: string | null;
   /** ISO timestamp of when the failure was first persisted. */
   failureAt: string | null;
+  /** Tally of warnings filtered out of the Errors drawer. */
+  benignTally: BenignWarningTally;
 }
 
 /** Produces a plain-text bundle suitable for clipboard/issue reports. */
@@ -512,6 +547,19 @@ function buildReport(input: ReportInput): string {
     }
     lines.push("");
   }
+
+  // Filtered benign warnings — disclosed even when total is 0 so reviewers
+  // can confirm the suppression layer ran (vs. silently failing).
+  lines.push(`── Filtered benign warnings (${input.benignTally.total}) ─`);
+  if (input.benignTally.matched.length === 0) {
+    lines.push("  (no benign warnings suppressed)");
+  } else {
+    input.benignTally.matched.forEach((m) => {
+      lines.push(`  [${m.count}×]  ${m.id}`);
+      lines.push(`         ${m.label}`);
+    });
+  }
+  lines.push("");
 
   lines.push("── Suggested fix ─────────────────────────");
   input.fixSteps.forEach((step, idx) => {

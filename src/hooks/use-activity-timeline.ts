@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { sendMessage } from "@/lib/message-client";
+import { isBenignWarning } from "@/lib/benign-warnings";
 
 export interface TimelineEntry {
   id: string;
@@ -51,24 +52,6 @@ function normalizeLevel(level: string): string {
   return lower;
 }
 
-/**
- * Patterns for known-benign operational warnings that are emitted by the
- * background service worker on certain Chrome / Chromium variants but do
- * NOT represent a real failure. These are filtered out of the Errors
- * drawer so stale bundles don't alarm users with non-actionable noise.
- *
- * Add new entries sparingly and ONLY when the underlying source path is
- * already a no-op fallback (i.e. the warning's only purpose was telemetry).
- */
-const BENIGN_WARNING_PATTERNS: ReadonlyArray<RegExp> = [
-  /\[injection:csp\][^\n]*configureWorld unavailable/i,
-];
-
-function isBenignWarning(entry: TimelineEntry): boolean {
-  if (entry.level !== "warn") return false;
-  const haystack = `${entry.message} ${entry.detail ?? ""}`;
-  return BENIGN_WARNING_PATTERNS.some((re) => re.test(haystack));
-}
 
 // eslint-disable-next-line max-lines-per-function
 export function useActivityTimeline(limit = 500) {
