@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { sendMessage } from "@/lib/message-client";
+import { freezeClickTrail, readFrozenClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
 
 interface ActiveProjectData {
   activeProject: {
@@ -82,6 +83,21 @@ interface HealthData {
 
 export type { ActiveProjectData, InjectionStatus, PopupScript, StatusData, HealthData, OpfsStatusData };
 
+/**
+ * Persisted boot-failure payload mirrored from chrome.storage.local
+ * (`marco_last_boot_failure`). Used as a fallback when GET_STATUS races
+ * against a fresh service-worker restart and as the source of `failureId`
+ * for snapshotting the click trail.
+ */
+interface PersistedBootFailure {
+  step: string;
+  message: string;
+  stack: string | null;
+  at: string;
+  failureId: string;
+  context: BootErrorContext | null;
+}
+
 // eslint-disable-next-line max-lines-per-function
 export function usePopupData() {
   const [projectData, setProjectData] = useState<ActiveProjectData | null>(null);
@@ -92,6 +108,8 @@ export function usePopupData() {
   const [scripts, setScripts] = useState<PopupScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
+  const [frozenTrail, setFrozenTrail] = useState<ClickTrailEntry[] | null>(null);
+  const [persistedFailure, setPersistedFailure] = useState<PersistedBootFailure | null>(null);
 
   const refresh = useCallback(async () => {
     const t0 = performance.now();
@@ -115,6 +133,12 @@ export function usePopupData() {
     }));
     setScripts(enrichedScripts);
     setLoading(false);
+
+    // Boot-failure recovery: read the persisted payload (survives SW restarts)
+    // and freeze the live click trail under the failure's stable ID so the
+    // banner always shows actions captured at the moment of failure — even
+    // after the user keeps interacting with the popup.
+    void hydrateBootFailureSnapshot(statusRes, setPersistedFailure, setFrozenTrail);
 
     // Non-critical fetches off the critical path — UI is already visible
     sendMessage<OpfsStatusData>({ type: "GET_OPFS_STATUS" })
@@ -147,6 +171,13 @@ export function usePopupData() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Effective values: prefer live status; fall back to persisted payload when
+  // the SW has restarted and bootStep/bootError are not yet populated again.
+  const effectiveBootStep = status?.bootStep ?? (persistedFailure ? `failed:${persistedFailure.step}` : undefined);
+  const effectiveBootError = status?.bootError ?? persistedFailure?.message ?? null;
+  const effectiveBootErrorStack = status?.bootErrorStack ?? persistedFailure?.stack ?? null;
+  const effectiveBootErrorContext = status?.bootErrorContext ?? persistedFailure?.context ?? null;
+
   return {
     projectData,
     status,
@@ -159,5 +190,65 @@ export function usePopupData() {
     refresh,
     setActiveProject,
     toggleScript,
+    /** Frozen click-trail snapshot captured at the moment of the active boot failure. */
+    frozenTrail,
+    /** Effective boot diagnostics (live status overlaid on the persisted payload). */
+    effectiveBootStep,
+    effectiveBootError,
+    effectiveBootErrorStack,
+    effectiveBootErrorContext,
   };
+}
+
+/**
+ * Reads the persisted boot-failure payload from chrome.storage.local and, if
+ * present, freezes the current sessionStorage click trail under the failure's
+ * stable `failureId`. Subsequent popup re-opens prefer the frozen snapshot so
+ * the "Recent actions" list never drifts away from what was on screen when
+ * the failure occurred.
+ *
+ * No-ops on success boots, when chrome.storage is unavailable, or when the
+ * payload is malformed.
+ */
+async function hydrateBootFailureSnapshot(
+  statusRes: StatusData,
+  setPersistedFailure: (p: PersistedBootFailure | null) => void,
+  setFrozenTrail: (t: ClickTrailEntry[] | null) => void,
+): Promise<void> {
+  const liveFailed = typeof statusRes.bootStep === "string" && statusRes.bootStep.startsWith("failed:");
+
+  try {
+    const chromeRef: typeof chrome | undefined = typeof chrome !== "undefined" ? chrome : undefined;
+    if (chromeRef?.storage?.local === undefined) {
+      // Preview / non-extension context — fall back to live state alone.
+      if (liveFailed) {
+        const id = `${statusRes.bootStep}|${(statusRes.bootError ?? "").slice(0, 80)}`;
+        setFrozenTrail(freezeClickTrail(id));
+      }
+      return;
+    }
+
+    const stored = await chromeRef.storage.local.get("marco_last_boot_failure");
+    const payload = stored.marco_last_boot_failure as PersistedBootFailure | undefined;
+
+    // No persisted failure AND no live failure → nothing to do.
+    if (payload === undefined && liveFailed === false) {
+      setPersistedFailure(null);
+      setFrozenTrail(null);
+      return;
+    }
+
+    if (payload !== undefined) {
+      setPersistedFailure(payload);
+      const existing = readFrozenClickTrail(payload.failureId);
+      setFrozenTrail(existing ?? freezeClickTrail(payload.failureId));
+      return;
+    }
+
+    // Live failure but no persisted record yet (race) — synthesise an ID.
+    const fallbackId = `${statusRes.bootStep}|${(statusRes.bootError ?? "").slice(0, 80)}`;
+    setFrozenTrail(freezeClickTrail(fallbackId));
+  } catch {
+    // chrome.storage may be unavailable mid-failure — degrade silently.
+  }
 }

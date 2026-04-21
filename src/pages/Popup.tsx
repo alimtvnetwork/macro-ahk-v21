@@ -43,6 +43,11 @@ const PopupPage = () => {
     refresh,
     setActiveProject,
     toggleScript,
+    frozenTrail,
+    effectiveBootStep,
+    effectiveBootError,
+    effectiveBootErrorStack,
+    effectiveBootErrorContext,
   } = usePopupData();
 
   const versionCheck = useVersionCheck();
@@ -80,10 +85,11 @@ const PopupPage = () => {
         />
         <VersionMismatchBanner versionCheck={versionCheck} />
         <BootFailureBanner
-          bootStep={status?.bootStep}
-          bootError={status?.bootError ?? null}
-          bootErrorStack={status?.bootErrorStack ?? null}
-          bootErrorContext={status?.bootErrorContext ?? null}
+          bootStep={effectiveBootStep}
+          bootError={effectiveBootError}
+          bootErrorStack={effectiveBootErrorStack}
+          bootErrorContext={effectiveBootErrorContext}
+          frozenTrail={frozenTrail}
         />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {status && health ? (

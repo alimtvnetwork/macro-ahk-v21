@@ -18,6 +18,13 @@ interface BootFailureBannerProps {
   bootErrorStack?: string | null;
   /** Structured failing-operation context (SQL + migration step), if known. */
   bootErrorContext?: BootErrorContext | null;
+  /**
+   * Trail of UI actions captured at the moment of failure. When provided,
+   * the banner renders this snapshot INSTEAD of the live sessionStorage
+   * trail so the "Recent actions" section stays pinned to the failure
+   * cause across popup re-opens. Falls back to live trail when null.
+   */
+  frozenTrail?: ClickTrailEntry[] | null;
 }
 
 /**
@@ -30,7 +37,7 @@ interface BootFailureBannerProps {
  *  - A collapsible trail of recent UI actions
  *  - A "copy report" button that bundles everything for support
  */
-export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext }: BootFailureBannerProps) {
+export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErrorContext, frozenTrail }: BootFailureBannerProps) {
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -41,11 +48,14 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const failedStep = bootStep.replace("failed:", "");
   const cause = classifyCause(failedStep, bootError);
   const fixSteps = getFixSteps(cause);
-  const trail = readClickTrail();
+  // Prefer the frozen snapshot (captured at moment of failure) — fall back to
+  // the live trail only when no snapshot was preserved (e.g. preview context).
+  const trail = frozenTrail ?? readClickTrail();
+  const isFrozen = frozenTrail !== null && frozenTrail !== undefined;
   const ctx = bootErrorContext ?? null;
 
   const handleCopyReport = async () => {
-    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail });
+    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
     try {
       await navigator.clipboard.writeText(report);
       setCopied(true);
@@ -187,7 +197,7 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
       {trail.length > 0 ? (
         <CollapsibleSection
           icon={<MousePointerClick className="h-3 w-3" />}
-          label={`Recent actions (${trail.length})`}
+          label={`Recent actions (${trail.length})${isFrozen ? " — snapshot at failure" : ""}`}
           isOpen={showTrail}
           onToggle={() => setShowTrail((v) => !v)}
         >
@@ -347,6 +357,7 @@ interface ReportInput {
   bootErrorContext: BootErrorContext | null;
   fixSteps: string[];
   trail: ClickTrailEntry[];
+  isFrozenTrail: boolean;
 }
 
 /** Produces a plain-text bundle suitable for clipboard/issue reports. */
@@ -390,7 +401,7 @@ function buildReport(input: ReportInput): string {
   lines.push("── Stack trace ───────────────────────────");
   lines.push(input.bootErrorStack ?? "(unavailable)");
   lines.push("");
-  lines.push(`── Recent UI actions (${input.trail.length}) ─────────`);
+  lines.push(`── Recent UI actions (${input.trail.length})${input.isFrozenTrail ? " — snapshot at failure" : " — live"} ─────────`);
   if (input.trail.length === 0) {
     lines.push("  (none captured)");
   } else {
