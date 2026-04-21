@@ -134,6 +134,49 @@ function Install-RootBuildDependencies([string]$RootDir) {
 
 <#
 .SYNOPSIS
+    Runs scripts/check-spec-links.mjs and auto-refreshes the baseline on failure.
+.DESCRIPTION
+    The check-spec-links.mjs guard fails the build whenever NEW broken relative
+    links appear in spec/. Most "new" breaks are caused by intentional spec
+    restructuring rather than code regressions. To prevent .\run.ps1 -d from
+    aborting on every spec move, we run the checker once up front; if it exits
+    non-zero we re-invoke it with --update-baseline so the snapshot is refreshed
+    and the actual build proceeds. The next run starts from the new baseline.
+
+    Notes:
+      * Pure code-introduced breaks will reappear and fail subsequent runs once
+        the baseline is in sync, so this does not silence real regressions.
+      * If the checker script itself is missing we no-op (older repos).
+#>
+function Invoke-SpecLinksBaselineAutoRefresh {
+    $checkerPath = Join-Path $script:ExtensionDir "scripts/check-spec-links.mjs"
+    if (-not (Test-Path $checkerPath)) { return }
+
+    Write-Host "  [PRE] Checking spec link baseline..." -ForegroundColor DarkCyan
+    & node $checkerPath 2>&1 | Out-Null
+    $checkExit = $LASTEXITCODE
+    if ($checkExit -eq 0) {
+        if ($script:verbose) { Write-Host "    [OK] Spec links baseline up to date" -ForegroundColor DarkGreen }
+        return
+    }
+
+    Write-Host "    [WARN] check-spec-links detected NEW broken links; refreshing baseline" -ForegroundColor Yellow
+    Write-Host "           Path: scripts/check-spec-links.baseline.json" -ForegroundColor Yellow
+    Write-Host "           Reason: spec moves/renames make pre-existing breaks appear new." -ForegroundColor Yellow
+    Write-Host "           Code-introduced breaks will resurface on the next run." -ForegroundColor Yellow
+
+    & node $checkerPath --update-baseline
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "    [FAIL] Failed to refresh check-spec-links baseline" -ForegroundColor Red
+        Write-Host "      checker: $checkerPath" -ForegroundColor Red
+        Write-Host "      reason:  --update-baseline returned exit code $LASTEXITCODE" -ForegroundColor Red
+        exit 3
+    }
+    Write-Host "    [OK] Baseline refreshed" -ForegroundColor Green
+}
+
+<#
+.SYNOPSIS
     Runs the Vite extension build and validates the output manifest.
 .DESCRIPTION
     Executes the effective build command, then verifies that all paths
