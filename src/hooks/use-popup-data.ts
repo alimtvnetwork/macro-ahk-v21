@@ -134,6 +134,12 @@ export function usePopupData() {
     setScripts(enrichedScripts);
     setLoading(false);
 
+    // Boot-failure recovery: read the persisted payload (survives SW restarts)
+    // and freeze the live click trail under the failure's stable ID so the
+    // banner always shows actions captured at the moment of failure — even
+    // after the user keeps interacting with the popup.
+    void hydrateBootFailureSnapshot(statusRes, setPersistedFailure, setFrozenTrail);
+
     // Non-critical fetches off the critical path — UI is already visible
     sendMessage<OpfsStatusData>({ type: "GET_OPFS_STATUS" })
       .then((res) => setOpfsStatus(res))
