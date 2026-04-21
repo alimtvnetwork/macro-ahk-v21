@@ -53,6 +53,8 @@ interface StatusData {
   version: string;
   latencyMs?: number;
   bootStep?: string;
+  /** Underlying error message if boot failed; null/undefined when boot succeeded. */
+  bootError?: string | null;
 }
 
 interface OpfsStatusData {
