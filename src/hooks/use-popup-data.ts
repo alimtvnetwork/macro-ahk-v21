@@ -83,6 +83,21 @@ interface HealthData {
 
 export type { ActiveProjectData, InjectionStatus, PopupScript, StatusData, HealthData, OpfsStatusData };
 
+/**
+ * Persisted boot-failure payload mirrored from chrome.storage.local
+ * (`marco_last_boot_failure`). Used as a fallback when GET_STATUS races
+ * against a fresh service-worker restart and as the source of `failureId`
+ * for snapshotting the click trail.
+ */
+interface PersistedBootFailure {
+  step: string;
+  message: string;
+  stack: string | null;
+  at: string;
+  failureId: string;
+  context: BootErrorContext | null;
+}
+
 // eslint-disable-next-line max-lines-per-function
 export function usePopupData() {
   const [projectData, setProjectData] = useState<ActiveProjectData | null>(null);
@@ -93,6 +108,8 @@ export function usePopupData() {
   const [scripts, setScripts] = useState<PopupScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
+  const [frozenTrail, setFrozenTrail] = useState<ClickTrailEntry[] | null>(null);
+  const [persistedFailure, setPersistedFailure] = useState<PersistedBootFailure | null>(null);
 
   const refresh = useCallback(async () => {
     const t0 = performance.now();
