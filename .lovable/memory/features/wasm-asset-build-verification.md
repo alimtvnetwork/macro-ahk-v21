@@ -26,6 +26,7 @@ Runs in `closeBundle` (after viteStaticCopy + copyManifest). Checks `chrome-exte
 
 ### 3. Runtime diagnostics — `loadSqlJs()` in src/background/db-manager.ts
 Each failure mode in the WASM load chain has a distinct, actionable error message:
+- **HEAD 404 / HEAD threw / HEAD 0 bytes** → tagged `[WASM_FILE_MISSING_404]` → banner classifies as `kind: "wasm-missing"` with dedicated 5-step fix (v2.174.0+)
 - **fetch threw** → "WASM file not in chrome-extension/wasm/ — check viteStaticCopy"
 - **fetch HTTP non-2xx** → "Not in web_accessible_resources or not copied"
 - **arrayBuffer() threw** → "Failed to read response body"
@@ -34,4 +35,6 @@ Each failure mode in the WASM load chain has a distinct, actionable error messag
 
 ## Surfacing
 
-All five runtime errors propagate up through `boot.ts` → `setBootError(err)` → `chrome.storage.local.marco_last_boot_failure` → `GET_STATUS.bootError + bootErrorStack` → `BootFailureBanner` cause classification (kind=`wasm`).
+All runtime errors propagate up through `boot.ts` → `setBootError(err)` → `chrome.storage.local.marco_last_boot_failure` → `GET_STATUS.bootError + bootErrorStack` → `BootFailureBanner` cause classification.
+
+The `verifyWasmPresence()` upfront HEAD check (v2.174.0+) runs before the body fetch so a packaging miss produces a fast, distinctive error path classified as `wasm-missing` rather than the generic `wasm` bucket.
