@@ -202,6 +202,14 @@ function classifyCause(failedStep: string, bootError: string | null | undefined)
 /** Returns numbered, cause-specific recovery steps. */
 function getFixSteps(cause: Cause): string[] {
   switch (cause.kind) {
+    case "wasm-missing":
+      return [
+        "The packaged extension is missing wasm/sql-wasm.wasm (HEAD request returned 404).",
+        "Rebuild with .\\run.ps1 -d — the verifyWasmAsset Vite plugin will self-heal from node_modules/sql.js/dist/, or hard-fail with the exact path if it's missing there too.",
+        "Confirm chrome-extension/wasm/sql-wasm.wasm exists after the build, and that manifest.json's web_accessible_resources lists \"wasm/sql-wasm.wasm\".",
+        "Open chrome://extensions and click the reload icon on Marco.",
+        "Re-open this popup; the banner should disappear and Persistence should switch from \"memory\" to \"opfs\".",
+      ];
     case "wasm":
       return [
         "Confirm wasm/sql-wasm.wasm exists in the chrome-extension/ build output.",
