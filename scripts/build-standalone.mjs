@@ -206,28 +206,31 @@ const SHARED_PREREQS = [
 
 const viteModeFlag = BUILD_MODE === "development" ? ["--mode", "development"] : [];
 
-/** Three bundle builds — fan out in parallel after prereqs succeed. */
+/** Three bundle builds — fan out in parallel after prereqs succeed.
+ *  Use `npx` for tsc/vite so they resolve from node_modules/.bin without
+ *  relying on shell PATH activation (works identically on Windows + POSIX).
+ */
 const PARALLEL_JOBS = [
     {
         name: "marco-sdk",
         steps: [
-            { label: "tsc --noEmit (sdk)", cmd: "tsc", args: ["--noEmit", "-p", "tsconfig.sdk.json"] },
-            { label: "vite build (sdk)",   cmd: "vite", args: ["build", "--config", "vite.config.sdk.ts", ...viteModeFlag] },
+            { label: "tsc --noEmit (sdk)", cmd: "npx", args: ["--no-install", "tsc", "--noEmit", "-p", "tsconfig.sdk.json"] },
+            { label: "vite build (sdk)",   cmd: "npx", args: ["--no-install", "vite", "build", "--config", "vite.config.sdk.ts", ...viteModeFlag] },
             { label: "generate-dts",       cmd: "node", args: ["scripts/generate-dts.mjs"] },
         ],
     },
     {
         name: "xpath",
         steps: [
-            { label: "tsc --noEmit (xpath)", cmd: "tsc", args: ["--noEmit", "-p", "tsconfig.xpath.json"] },
-            { label: "vite build (xpath)",   cmd: "vite", args: ["build", "--config", "vite.config.xpath.ts", ...viteModeFlag] },
+            { label: "tsc --noEmit (xpath)", cmd: "npx", args: ["--no-install", "tsc", "--noEmit", "-p", "tsconfig.xpath.json"] },
+            { label: "vite build (xpath)",   cmd: "npx", args: ["--no-install", "vite", "build", "--config", "vite.config.xpath.ts", ...viteModeFlag] },
         ],
     },
     {
         name: "macro-controller",
         steps: [
-            { label: "tsc --noEmit (macro)",  cmd: "tsc", args: ["--noEmit", "-p", "tsconfig.macro.build.json"] },
-            { label: "vite build (macro)",    cmd: "vite", args: ["build", "--config", "vite.config.macro.ts", ...viteModeFlag] },
+            { label: "tsc --noEmit (macro)",  cmd: "npx", args: ["--no-install", "tsc", "--noEmit", "-p", "tsconfig.macro.build.json"] },
+            { label: "vite build (macro)",    cmd: "npx", args: ["--no-install", "vite", "build", "--config", "vite.config.macro.ts", ...viteModeFlag] },
             { label: "sync-macro-controller-legacy", cmd: "node", args: ["scripts/sync-macro-controller-legacy.mjs"] },
         ],
     },
