@@ -1,7 +1,7 @@
 import type { JsonValue } from "@/background/handlers/handler-types";
 import { useState, useCallback } from "react";
 import type { LibraryLinkMap } from "@/hooks/use-library-link-map";
-import { SyncBadge } from "./LibraryView";
+import { SyncBadge } from "./SyncBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
