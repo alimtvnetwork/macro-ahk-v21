@@ -270,6 +270,28 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
         </CollapsibleSection>
       ) : null}
 
+      {/* ── Filtered benign warnings (always shown when SW logs reachable) ─ */}
+      {benignTally.matched.length > 0 ? (
+        <CollapsibleSection
+          icon={<ShieldOff className="h-3 w-3" />}
+          label={`Filtered benign warnings (${benignTally.total})`}
+          isOpen={showSuppressed}
+          onToggle={() => setShowSuppressed((v) => !v)}
+        >
+          <ul className="text-[10px] font-mono text-destructive/80 bg-background/40 rounded p-2 space-y-1 border border-destructive/20">
+            {benignTally.matched.map((m) => (
+              <li key={m.id} className="flex gap-2">
+                <span className="shrink-0 text-destructive/60">[{m.count}×]</span>
+                <span className="break-words">
+                  <span className="text-destructive/70">{m.id}</span>
+                  <span className="text-destructive/60"> — {m.label}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      ) : null}
+
       {/* ── Fix Steps ──────────────────────────────────────── */}
       <div className="rounded border border-destructive/30 bg-destructive/5 p-2">
         <div className="flex items-center gap-1.5 mb-1.5">
