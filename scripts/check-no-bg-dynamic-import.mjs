@@ -242,10 +242,98 @@ function suggestionFor(finding) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 5: Report                                                     */
+/*  Step 5: Apply baseline (allow-list) before deciding pass/fail      */
+/*                                                                     */
+/*  Baseline shape (scripts/check-no-bg-dynamic-import.baseline.json): */
+/*    {                                                                */
+/*      "$schema": "...",                                              */
+/*      "generatedAt": "ISO timestamp",                                */
+/*      "entries": [                                                   */
+/*        { "file": "...", "specifier": "...",                         */
+/*          "functionName": "...", "reason": "..." }                   */
+/*      ]                                                              */
+/*    }                                                                */
+/*                                                                     */
+/*  Match key: file + specifier + functionName (line-agnostic so       */
+/*  re-formatting won't break the allow-list). Anything in `entries`   */
+/*  that doesn't match a current finding is reported as STALE so the   */
+/*  baseline cannot drift silently.                                    */
 /* ------------------------------------------------------------------ */
-if (findings.length === 0) {
-    console.log(`[OK] ${TARGET_LABEL}/: no dynamic import() calls (${files.length} files scanned)`);
+function findingKey(f) {
+    return `${f.file}|${f.specifier ?? "<dynamic>"}|${f.functionName}`;
+}
+
+function loadBaseline() {
+    if (!existsSync(BASELINE_PATH)) return { entries: [] };
+    try {
+        const parsed = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+        const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+        return { entries };
+    } catch (err) {
+        console.error("");
+        console.error("╔══════════════════════════════════════════════════════════════╗");
+        console.error("║  CODE RED: baseline file is invalid JSON                    ║");
+        console.error("╚══════════════════════════════════════════════════════════════╝");
+        console.error(`  Path:    ${BASELINE_PATH}`);
+        console.error(`  Missing: parseable JSON object with an "entries" array`);
+        console.error(`  Reason:  ${err instanceof Error ? err.message : String(err)}`);
+        console.error(`           Fix the file by hand, or regenerate it via:`);
+        console.error(`             pnpm run lint:no-bg-dynamic-import -- --update-baseline`);
+        process.exit(1);
+    }
+}
+
+function writeBaseline(currentFindings) {
+    const payload = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        description: "Allow-list of known dynamic import() call sites in src/background/. "
+            + "Each entry is matched on file + specifier + functionName. "
+            + "Refactor to a static import and remove the entry — never silence new violations here.",
+        generatedAt: new Date().toISOString(),
+        entries: currentFindings.map((f) => ({
+            file: f.file,
+            specifier: f.specifier,
+            functionName: f.functionName,
+            line: f.line,
+            reason: "TODO: explain why this dynamic import cannot be hoisted yet, or schedule the refactor.",
+        })),
+    };
+    writeFileSync(BASELINE_PATH, JSON.stringify(payload, null, 2) + "\n", "utf8");
+    console.log(`[OK] Wrote ${currentFindings.length} entries to ${BASELINE_LABEL}`);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Step 6: Report                                                     */
+/* ------------------------------------------------------------------ */
+if (FLAG_UPDATE_BASELINE) {
+    writeBaseline(findings);
+    process.exit(0);
+}
+
+const baseline = FLAG_STRICT ? { entries: [] } : loadBaseline();
+const baselineKeys = new Set(baseline.entries.map(findingKey));
+const currentKeys = new Set(findings.map(findingKey));
+
+const allowed = [];
+const blocking = [];
+for (const f of findings) {
+    if (baselineKeys.has(findingKey(f))) {
+        allowed.push(f);
+    } else {
+        blocking.push(f);
+    }
+}
+
+const staleBaselineEntries = baseline.entries.filter((e) => !currentKeys.has(findingKey(e)));
+
+if (blocking.length === 0 && staleBaselineEntries.length === 0) {
+    if (allowed.length > 0) {
+        console.log(`[OK] ${TARGET_LABEL}/: ${files.length} files scanned, `
+            + `${allowed.length} dynamic import() call(s) allow-listed via ${BASELINE_LABEL}.`);
+        console.log(`     Refactor these and shrink the baseline whenever possible.`);
+    } else {
+        console.log(`[OK] ${TARGET_LABEL}/: no dynamic import() calls (${files.length} files scanned)`);
+    }
     process.exit(0);
 }
 
@@ -253,20 +341,42 @@ console.error("");
 console.error("╔══════════════════════════════════════════════════════════════╗");
 console.error("║  BLOCKED: dynamic import() in background source             ║");
 console.error("╚══════════════════════════════════════════════════════════════╝");
-console.error(`  Found ${findings.length} dynamic import() call(s) under ${TARGET_LABEL}/.`);
-console.error(`  MV3 service workers cannot evaluate import() reliably —`);
-console.error(`  hoist each call to a static \`import\` declaration at the top of the file.`);
-console.error("");
 
-findings.forEach((f, idx) => {
-    console.error(`  [${idx + 1}/${findings.length}] ✗ ${f.file}:${f.line}:${f.column}`);
-    console.error(`        function: ${f.functionName}`);
-    console.error(`        call:     ${f.snippet}`);
-    console.error(`        suggested fix:`);
-    for (const line of suggestionFor(f)) {
-        console.error(`          • ${line}`);
+if (blocking.length > 0) {
+    console.error(`  Found ${blocking.length} NEW dynamic import() call(s) under ${TARGET_LABEL}/`);
+    console.error(`  not present in ${BASELINE_LABEL}.`);
+    console.error(`  MV3 service workers cannot evaluate import() reliably —`);
+    console.error(`  hoist each call to a static \`import\` declaration at the top of the file.`);
+    if (allowed.length > 0) {
+        console.error(`  (${allowed.length} other call(s) are temporarily allow-listed.)`);
     }
     console.error("");
-});
 
+    blocking.forEach((f, idx) => {
+        console.error(`  [${idx + 1}/${blocking.length}] ✗ ${f.file}:${f.line}:${f.column}`);
+        console.error(`        function: ${f.functionName}`);
+        console.error(`        call:     ${f.snippet}`);
+        console.error(`        suggested fix:`);
+        for (const line of suggestionFor(f)) {
+            console.error(`          • ${line}`);
+        }
+        console.error("");
+    });
+}
+
+if (staleBaselineEntries.length > 0) {
+    console.error(`  ⚠ Baseline drift: ${staleBaselineEntries.length} entr${staleBaselineEntries.length === 1 ? "y is" : "ies are"} `
+        + `no longer present in the source.`);
+    console.error(`    Remove the stale entr${staleBaselineEntries.length === 1 ? "y" : "ies"} from ${BASELINE_LABEL}, or regenerate via:`);
+    console.error(`      pnpm run lint:no-bg-dynamic-import -- --update-baseline`);
+    for (const e of staleBaselineEntries) {
+        console.error(`      • ${e.file}  ${e.specifier ? `→ ${e.specifier}` : ""}  (function: ${e.functionName})`);
+    }
+    console.error("");
+}
+
+console.error(`  To intentionally allow a NEW finding (last resort), run:`);
+console.error(`    pnpm run lint:no-bg-dynamic-import -- --update-baseline`);
+console.error(`  …then add a "reason" to each new entry in ${BASELINE_LABEL}.`);
+console.error("");
 process.exit(1);
