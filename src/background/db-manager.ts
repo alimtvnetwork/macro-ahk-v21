@@ -215,13 +215,44 @@ async function tryStorageInit(): Promise<boolean> {
     }
 }
 
+/**
+ * Runs a multi-statement schema bootstrap, splitting on `;` so a single
+ * failing statement can be reported (instead of the opaque whole-blob
+ * error sql.js gives back from `db.run(FULL_LOGS_SCHEMA)`).
+ *
+ * Throws a tagged `[SCHEMA_INIT_FAILURE scope="<scope>"] … SQL: …` error
+ * so `setBootError()` can extract the failing statement text into
+ * `bootErrorContext.sql` for the popup banner.
+ */
+function runSchemaWithIsolation(
+    db: SqlJsDatabase,
+    schema: string,
+    scope: string,
+): void {
+    const statements = schema
+        .split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+    for (const stmt of statements) {
+        try {
+            db.run(stmt + ";");
+        } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            throw new Error(
+                `[SCHEMA_INIT_FAILURE scope="${scope}"] SQL: ${stmt};\n  Reason: ${reason}`,
+            );
+        }
+    }
+}
+
 /** Creates in-memory databases as a last resort. */
 function initInMemory(): void {
     logsDb = new SQL!.Database();
-    logsDb.run(FULL_LOGS_SCHEMA);
+    runSchemaWithIsolation(logsDb, FULL_LOGS_SCHEMA, "logs:memory");
 
     errorsDb = new SQL!.Database();
-    errorsDb.run(ERRORS_SCHEMA);
+    runSchemaWithIsolation(errorsDb, ERRORS_SCHEMA, "errors:memory");
     persistenceMode = "memory";
 
     console.log("[db-manager] In-memory only (no persistence)");

@@ -45,6 +45,13 @@ interface PopupScript {
   runAt?: string;
 }
 
+interface BootErrorContext {
+  sql: string | null;
+  migrationVersion: number | null;
+  migrationDescription: string | null;
+  scope: string | null;
+}
+
 interface StatusData {
   connection: string;
   token: { status: string; expiresIn: string | null };
@@ -57,6 +64,8 @@ interface StatusData {
   bootError?: string | null;
   /** Underlying error stack trace if boot failed; null/undefined when unavailable. */
   bootErrorStack?: string | null;
+  /** Structured operation context (failing SQL/migration step), null/undefined when unavailable. */
+  bootErrorContext?: BootErrorContext | null;
 }
 
 interface OpfsStatusData {
