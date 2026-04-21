@@ -55,7 +55,7 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const ctx = bootErrorContext ?? null;
 
   const handleCopyReport = async () => {
-    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail });
+    const report = buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, fixSteps, trail, isFrozenTrail: isFrozen });
     try {
       await navigator.clipboard.writeText(report);
       setCopied(true);
@@ -357,6 +357,7 @@ interface ReportInput {
   bootErrorContext: BootErrorContext | null;
   fixSteps: string[];
   trail: ClickTrailEntry[];
+  isFrozenTrail: boolean;
 }
 
 /** Produces a plain-text bundle suitable for clipboard/issue reports. */
@@ -400,7 +401,7 @@ function buildReport(input: ReportInput): string {
   lines.push("── Stack trace ───────────────────────────");
   lines.push(input.bootErrorStack ?? "(unavailable)");
   lines.push("");
-  lines.push(`── Recent UI actions (${input.trail.length}) ─────────`);
+  lines.push(`── Recent UI actions (${input.trail.length})${input.isFrozenTrail ? " — snapshot at failure" : " — live"} ─────────`);
   if (input.trail.length === 0) {
     lines.push("  (none captured)");
   } else {
