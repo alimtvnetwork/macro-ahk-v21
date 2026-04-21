@@ -60,10 +60,83 @@ export function recordTrail(entry: Omit<ClickTrailEntry, "at">): void {
     }
 }
 
-/** Clears the trail. Useful after the user reloads the extension. */
+/** Clears the live trail. Useful after the user reloads the extension. */
 export function clearClickTrail(): void {
     try {
         sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+        // ignore
+    }
+}
+
+/**
+ * Freezes the current live trail under a per-failure key so subsequent popup
+ * reopens render the SAME trail that was on screen when boot failed — even
+ * though the user keeps clicking around afterwards.
+ *
+ * Idempotent: returns the existing frozen snapshot when one already exists
+ * for `failureId`, ensuring the very first capture wins.
+ */
+export function freezeClickTrail(failureId: string): ClickTrailEntry[] {
+    const key = `${FROZEN_KEY_PREFIX}${failureId}`;
+    try {
+        const existing = sessionStorage.getItem(key);
+        if (existing !== null) {
+            const parsed = JSON.parse(existing) as ClickTrailEntry[];
+            if (Array.isArray(parsed)) return parsed;
+        }
+        const live = readClickTrail();
+        sessionStorage.setItem(key, JSON.stringify(live));
+        evictOldFrozenSnapshots(key);
+        return live;
+    } catch {
+        return readClickTrail();
+    }
+}
+
+/** Reads a previously frozen snapshot, or returns null if none was captured. */
+export function readFrozenClickTrail(failureId: string): ClickTrailEntry[] | null {
+    try {
+        const raw = sessionStorage.getItem(`${FROZEN_KEY_PREFIX}${failureId}`);
+        if (raw === null) return null;
+        const parsed = JSON.parse(raw) as ClickTrailEntry[];
+        return Array.isArray(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Drops all frozen snapshots — call after the user explicitly reloads the extension. */
+export function clearFrozenClickTrails(): void {
+    try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i += 1) {
+            const k = sessionStorage.key(i);
+            if (k !== null && k.startsWith(FROZEN_KEY_PREFIX)) {
+                keysToRemove.push(k);
+            }
+        }
+        keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+    } catch {
+        // ignore
+    }
+}
+
+/** Trims frozen snapshot count to MAX_FROZEN_SNAPSHOTS, preserving `keepKey`. */
+function evictOldFrozenSnapshots(keepKey: string): void {
+    try {
+        const frozenKeys: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i += 1) {
+            const k = sessionStorage.key(i);
+            if (k !== null && k.startsWith(FROZEN_KEY_PREFIX)) {
+                frozenKeys.push(k);
+            }
+        }
+        if (frozenKeys.length <= MAX_FROZEN_SNAPSHOTS) return;
+        const toRemove = frozenKeys
+            .filter((k) => k !== keepKey)
+            .slice(0, frozenKeys.length - MAX_FROZEN_SNAPSHOTS);
+        toRemove.forEach((k) => sessionStorage.removeItem(k));
     } catch {
         // ignore
     }
