@@ -40,6 +40,8 @@ function Deploy-Extension([string]$ProfileFolder) {
     $manifestPath = Join-Path $extDistPath "manifest.json"
     if (-not (Test-Path $manifestPath)) {
         Write-Host "  ERROR: manifest.json not found in dist/" -ForegroundColor Red
+        Write-Host "    Checked path: $manifestPath" -ForegroundColor Red
+        Write-Host "    Hint: the build likely produced the preview app instead of the extension bundle." -ForegroundColor Yellow
         exit 1
     }
     

@@ -159,6 +159,32 @@ function Build-Extension {
     }
 
     $effectiveBuildNow = Get-EffectivePnpmCommand $script:EffectiveBuildCommand
+
+    # Safety rail: for extension repos, a generic `pnpm run build` / `vite build`
+    # often builds the preview app instead of the MV3 extension, leaving dist/
+    # without manifest.json. If package.json exposes build:extension, prefer it
+    # whenever the configured command does not explicitly target the extension.
+    $packageJsonPath = Join-Path $script:ExtensionDir "package.json"
+    $hasBuildExtensionScript = $false
+    if (Test-Path $packageJsonPath) {
+        try {
+            $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+            $hasBuildExtensionScript = $null -ne $packageJson.scripts -and $null -ne $packageJson.scripts."build:extension"
+        } catch {
+            Write-Host "  [WARN] Could not parse package.json while checking build:extension fallback" -ForegroundColor Yellow
+        }
+    }
+
+    $isGenericBuildCommand = (
+        $effectiveBuildNow -match '(^|\s)(pnpm|npm|bun)\s+(--ignore-workspace\s+)?run\s+build(\s|$)'
+        -or $effectiveBuildNow -match '(^|\s)vite\s+build(\s|$)'
+    ) -and ($effectiveBuildNow -notmatch 'build:extension|vite\.config\.extension\.ts')
+
+    if ($hasBuildExtensionScript -and $isGenericBuildCommand) {
+        Write-Host "  [WARN] Generic build command detected for an extension repo; using build:extension instead" -ForegroundColor Yellow
+        $effectiveBuildNow = Get-EffectivePnpmCommand "pnpm run build:extension"
+    }
+
     if ($effectiveBuildNow -match '^(pnpm(?:\.cmd|\.exe)?)\s+' -and $effectiveBuildNow -notmatch '(^|\s)--ignore-workspace(\s|$)') {
         $effectiveBuildNow = $effectiveBuildNow -replace '^(pnpm(?:\.cmd|\.exe)?)\s+', '$1 --ignore-workspace '
     }
@@ -175,8 +201,18 @@ function Build-Extension {
     # Clean up env var
     if ($script:nosourcemap) { Remove-Item env:VITE_NO_SOURCEMAP -ErrorAction SilentlyContinue }
 
-    # Post-build: validate manifest paths
+    # Hard post-build guard: if manifest.json is missing here, fail NOW with the
+    # exact checked path and likely cause instead of falling through to deploy.
     $distManifestPath = Join-Path $script:ExtensionDir "$($script:DistDir)/manifest.json"
+    if (-not (Test-Path $distManifestPath)) {
+        Write-Host "  [FAIL] Extension build completed but manifest.json is missing from dist" -ForegroundColor Red
+        Write-Host "    Checked path: $distManifestPath" -ForegroundColor Red
+        Write-Host "    Likely cause: the wrong build command produced a web-app dist instead of the extension bundle." -ForegroundColor Yellow
+        Write-Host "    Expected: a build that copies manifest.json and background/index.js into $($script:DistDir)/" -ForegroundColor Yellow
+        exit 3
+    }
+
+    # Post-build: validate manifest paths
     if (Test-Path $distManifestPath) {
         $distManifest = Get-Content $distManifestPath -Raw | ConvertFrom-Json
         $distRoot = Join-Path $script:ExtensionDir $script:DistDir
