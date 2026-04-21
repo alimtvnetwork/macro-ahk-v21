@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { sendMessage } from "@/lib/message-client";
+import { isBenignWarning } from "@/lib/benign-warnings";
 
 export interface TimelineEntry {
   id: string;
