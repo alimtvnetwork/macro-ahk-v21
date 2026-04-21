@@ -24,6 +24,8 @@ export interface StatusData {
     totalBootMs: number;
     /** Underlying error message if boot failed; null/undefined when boot succeeded. */
     bootError?: string | null;
+    /** Underlying error stack trace if boot failed; null/undefined when unavailable. */
+    bootErrorStack?: string | null;
 }
 
 export interface HealthData {

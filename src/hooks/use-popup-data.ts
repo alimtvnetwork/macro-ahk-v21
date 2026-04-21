@@ -55,6 +55,8 @@ interface StatusData {
   bootStep?: string;
   /** Underlying error message if boot failed; null/undefined when boot succeeded. */
   bootError?: string | null;
+  /** Underlying error stack trace if boot failed; null/undefined when unavailable. */
+  bootErrorStack?: string | null;
 }
 
 interface OpfsStatusData {
