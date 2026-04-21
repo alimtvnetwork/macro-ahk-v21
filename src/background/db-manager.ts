@@ -68,12 +68,73 @@ let isInitialized = false;
 /*  Initialization                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Performs a fast presence check on the bundled WASM asset before attempting
+ * to fetch+initialize it. A HEAD request returns the file size in
+ * `Content-Length` (when present) without downloading the body, letting us
+ * surface a dedicated, unambiguous "WASM file missing" error path that the
+ * popup banner classifies as `kind: "wasm-missing"`.
+ *
+ * Distinct from the in-flight errors in `loadSqlJs()` because:
+ *   - The HEAD result is checked BEFORE we try to use the binary, so we can
+ *     fail fast with a clearly-worded message that names the exact missing
+ *     packaged path (`chrome-extension/wasm/sql-wasm.wasm`).
+ *   - The error tag `WASM_FILE_MISSING_404` is detected verbatim by
+ *     `classifyCause()` in BootFailureBanner.tsx, which selects the
+ *     dedicated "WASM file missing" fix steps.
+ */
+async function verifyWasmPresence(wasmUrl: string): Promise<void> {
+    let headResponse: Response;
+    try {
+        headResponse = await fetch(wasmUrl, { method: "HEAD" });
+    } catch (err) {
+        // HEAD itself threw — treat as a missing file (web_accessible_resources
+        // misconfig or extension URL not yet ready). Tagged so the banner picks
+        // up the dedicated cause.
+        throw new Error(
+            `[WASM_FILE_MISSING_404] HEAD request failed for "${wasmUrl}". ` +
+            `The file "wasm/sql-wasm.wasm" appears to be missing from the packaged ` +
+            `chrome-extension/ output OR is not listed in manifest.web_accessible_resources. ` +
+            `Original error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+    }
+    if (headResponse.status === 404) {
+        throw new Error(
+            `[WASM_FILE_MISSING_404] HEAD ${wasmUrl} returned 404. ` +
+            `The packaged extension is missing "wasm/sql-wasm.wasm" — rebuild with ` +
+            `".\\run.ps1 -d" so viteStaticCopy regenerates it from node_modules/sql.js/dist/, ` +
+            `then reload the extension from chrome://extensions.`,
+        );
+    }
+    if (!headResponse.ok) {
+        throw new Error(
+            `[WASM_FILE_MISSING_404] HEAD ${wasmUrl} returned HTTP ${headResponse.status}. ` +
+            `Confirm "wasm/sql-wasm.wasm" is listed in manifest.web_accessible_resources and ` +
+            `present at chrome-extension/wasm/sql-wasm.wasm.`,
+        );
+    }
+    // If Content-Length is reported and zero, the file is packaged but empty.
+    const contentLength = headResponse.headers.get("content-length");
+    if (contentLength !== null && Number(contentLength) === 0) {
+        throw new Error(
+            `[WASM_FILE_MISSING_404] HEAD ${wasmUrl} reports Content-Length: 0. ` +
+            `The packaged WASM file exists but is empty — rebuild the extension to regenerate it.`,
+        );
+    }
+}
+
 /** Loads sql.js WASM binary from the extension bundle. */
 async function loadSqlJs(): Promise<SqlJs> {
     // Service workers have no `document`, so sql.js's default locateFile
     // (which uses document.currentScript) throws ReferenceError.
     // We fetch the WASM binary ourselves and pass it directly.
     const wasmUrl = chrome.runtime.getURL("wasm/sql-wasm.wasm");
+
+    // Fast upfront presence check — produces a distinctive
+    // "[WASM_FILE_MISSING_404]" tagged error that the popup banner
+    // classifies as `kind: "wasm-missing"` with dedicated fix steps.
+    await verifyWasmPresence(wasmUrl);
+
     let wasmResponse: Response;
     try {
         wasmResponse = await fetch(wasmUrl);
