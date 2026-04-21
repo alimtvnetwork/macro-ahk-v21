@@ -15,7 +15,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ArrowUpCircle, Pin, RefreshCw, Unlink } from "lucide-react";
-import type { LinkState } from "@/lib/cross-project-sync-types";
+
+export type LinkState = "synced" | "pinned" | "detached";
 
 interface SyncBadgeProps {
   state: LinkState;
