@@ -104,3 +104,6 @@ standalone-scripts/_generated/seed-manifest.json
 .gitmap/release-assets
 release-assets
 standalone-scripts/macro-controller/01-macro-looping.js
+pnpm-workspace.yaml
+pnpm-lock.yaml
+.npmrc
