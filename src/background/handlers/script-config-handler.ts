@@ -273,7 +273,6 @@ export async function handleOptionsBootstrap(): Promise<{
         readAllConfigs(),
     ]);
     // Projects are read from the project handler to include default seeding
-    const { handleGetAllProjects } = await import("./project-handler");
     const { projects } = await handleGetAllProjects();
     return { projects, scripts, configs };
 }
