@@ -98,7 +98,6 @@ async function handleInstalled(
     await bootReady;
     // ✅ 88.3: Invalidate IndexedDB cache on install/update
     try {
-        const { invalidateCacheOnDeploy } = await import("./injection-cache");
         await invalidateCacheOnDeploy(details.reason);
     } catch (err) {
         logCaughtError(BgLogTag.SEEDER, "Cache invalidation failed", err);
