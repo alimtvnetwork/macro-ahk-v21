@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal, FileWarning } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Download, MousePointerClick, Code2, ListChecks, Database, Terminal, FileWarning, ShieldOff } from "lucide-react";
 import { readClickTrail, type ClickTrailEntry } from "@/lib/click-trail";
+import { useBenignWarningStats } from "@/hooks/use-benign-warning-stats";
+import type { BenignWarningTally } from "@/lib/benign-warnings";
 
 /** Structured per-failure context — see BootErrorContext in shared/messages.ts. */
 export interface BootErrorContext {
@@ -65,9 +67,14 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const [showStack, setShowStack] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [showProbe, setShowProbe] = useState(true);
+  const [showSuppressed, setShowSuppressed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  // Tally of warnings the activity timeline filtered out — disclosed in the
+  // support report so the suppression is auditable. `bumpKey` is keyed on
+  // `bootStep` so the count refreshes when the failure identity changes.
+  const benignTally = useBenignWarningStats(bootStep === undefined ? 0 : bootStep.length);
 
   if (!bootStep || !bootStep.startsWith("failed:")) return null;
 
@@ -84,7 +91,11 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
   const failAt = failureAt ?? null;
 
   const buildCurrentReport = (): string =>
-    buildReport({ failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe, fixSteps, trail, isFrozenTrail: isFrozen, failureId: failId, failureAt: failAt });
+    buildReport({
+      failedStep, cause, bootError, bootErrorStack, bootErrorContext: ctx, wasmProbe: probe,
+      fixSteps, trail, isFrozenTrail: isFrozen, failureId: failId, failureAt: failAt,
+      benignTally,
+    });
 
   const handleCopyReport = async () => {
     try {
