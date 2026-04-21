@@ -22,6 +22,8 @@ export interface StatusData {
     persistenceMode: string;
     bootTimings: Array<{ step: string; durationMs: number }>;
     totalBootMs: number;
+    /** Underlying error message if boot failed; null/undefined when boot succeeded. */
+    bootError?: string | null;
 }
 
 export interface HealthData {

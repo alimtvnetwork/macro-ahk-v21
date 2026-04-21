@@ -79,7 +79,7 @@ const PopupPage = () => {
           onRefresh={refresh}
         />
         <VersionMismatchBanner versionCheck={versionCheck} />
-        <BootFailureBanner bootStep={status?.bootStep} />
+        <BootFailureBanner bootStep={status?.bootStep} bootError={status?.bootError ?? null} />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {status && health ? (
             <PopupStatusBar status={status} health={health} opfsStatus={opfsStatus} />
