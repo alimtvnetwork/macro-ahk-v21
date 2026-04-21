@@ -136,13 +136,13 @@ Spec: `spec/13-features/cross-project-sync.md`
 
 ### Priority 5: Release Installer Hardening (v0.2)
 
-The pinned-version installer pair (`scripts/release-version.{ps1,sh}`) ships in v0.1 with stamped-version + URL-fallback resolution and hard-rejects every fall-forward path. v0.2 hardening, in priority order:
+The unified installer (`scripts/install.{ps1,sh}`) auto-derives the pinned version from its release-asset download URL and falls back to GitHub `latest` when no URL context is present (e.g., fetched from `raw.githubusercontent.com/.../main/` or run from a clone). v0.2 hardening, in priority order:
 
 1. **Built-in checksum verification** — installer fetches `checksums.txt` from the same release and verifies the ZIP's SHA256 before extracting (~15 LOC per script).
-2. **Authenticode-signed `release-version.ps1`** + GPG-signed `release-version.sh` released alongside `.sig` files.
+2. **Authenticode-signed `install.ps1`** + GPG-signed `install.sh` released alongside `.sig` files.
 3. **SLSA build provenance** for end-user audit of the GitHub Action that produced assets.
 
-Spec: `spec/18-release-installer/05-security-review.md`
+Memory: `.lovable/memory/features/release-installer.md`
 
 ---
 
