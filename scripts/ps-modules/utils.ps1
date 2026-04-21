@@ -76,10 +76,45 @@ function Install-NodeJS {
 .SYNOPSIS
     Installs pnpm globally via npm.
 #>
+<#
+.SYNOPSIS
+    Installs pnpm globally via npm, with pnpm-only npm_config_* env vars
+    stripped so npm does not warn about Unknown config keys read from .npmrc.
+#>
 function Install-Pnpm {
     Write-Host "  Installing pnpm globally..." -ForegroundColor Yellow
-    npm install -g pnpm
-    if ($LASTEXITCODE -ne 0) { throw "Failed to install pnpm" }
+
+    # Strip pnpm-only env vars for the duration of this npm call so npm
+    # does not emit "Unknown env config" warnings.
+    $pnpmOnlyKeys = @(
+        'npm_config_node_linker',
+        'npm_config_store_dir',
+        'npm_config_virtual_store_dir',
+        'npm_config_symlink',
+        'npm_config_package_import_method',
+        'npm_config_verify_deps_before_run',
+        'npm_config_ignore_workspace',
+        'npm_config__jsr_registry',
+        'npm_config_npm_globalconfig'
+    )
+    $savedEnv = @{}
+    foreach ($key in $pnpmOnlyKeys) {
+        $val = [Environment]::GetEnvironmentVariable($key)
+        if ($null -ne $val) {
+            $savedEnv[$key] = $val
+            [Environment]::SetEnvironmentVariable($key, $null)
+        }
+    }
+
+    try {
+        npm install -g pnpm 2>&1 | Where-Object { $_ -notmatch 'npm warn Unknown' }
+        if ($LASTEXITCODE -ne 0) { throw "Failed to install pnpm" }
+    } finally {
+        foreach ($key in $savedEnv.Keys) {
+            [Environment]::SetEnvironmentVariable($key, $savedEnv[$key])
+        }
+    }
+
     Refresh-Path
     Write-Host "  [OK] pnpm installed" -ForegroundColor Green
 }
