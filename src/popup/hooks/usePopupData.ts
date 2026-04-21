@@ -19,6 +19,15 @@ export interface BootErrorContext {
     scope: string | null;
 }
 
+export interface WasmProbeResult {
+    url: string;
+    status: number | null;
+    contentLength: string | null;
+    headError: string | null;
+    ok: boolean;
+    at: string;
+}
+
 export interface StatusData {
     connection: "online" | "offline" | "degraded";
     token: { status: string; expiresIn: string | null };
@@ -35,6 +44,8 @@ export interface StatusData {
     bootErrorStack?: string | null;
     /** Structured operation context (failing SQL/migration step), null/undefined when unavailable. */
     bootErrorContext?: BootErrorContext | null;
+    /** Snapshot of the upfront HEAD probe against the bundled WASM asset. */
+    wasmProbe?: WasmProbeResult | null;
 }
 
 export interface HealthData {
