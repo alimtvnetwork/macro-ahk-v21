@@ -84,7 +84,17 @@ function resolveDeclaredAssetSource(
 /*  Plugins                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Copies and rewrites manifest.json to chrome-extension/. */
+/**
+ * Copies and rewrites manifest.json to chrome-extension/.
+ *
+ * IMPORTANT: This plugin merges path overrides into the source manifest
+ * rather than wholesale-replacing fields. Previously it overwrote
+ * `web_accessible_resources` with a shorter list, dropping the
+ * content-script entries (xpath-recorder, network-reporter, prompt-injector)
+ * — that broke recorder injection silently. The source manifest is now the
+ * single source of truth for resource lists; this plugin only rewrites
+ * the entry-point path fields.
+ */
 function copyManifest(): Plugin {
     return {
         name: "copy-manifest",
@@ -108,22 +118,55 @@ function copyManifest(): Plugin {
                 "48": "assets/icons/icon-48.png",
                 "128": "assets/icons/icon-128.png",
             };
-            manifest.web_accessible_resources = [
-                {
-                    resources: [
-                        "wasm/sql-wasm.wasm",
-                        "build-meta.json",
-                        "prompts/macro-prompts.json",
-                        "projects/seed-manifest.json",
-                        "projects/scripts/*/*",
-                    ],
-                    matches: ["<all_urls>"],
-                },
-            ];
+            // NOTE: web_accessible_resources is taken verbatim from the source
+            // manifest.json — do NOT overwrite here. The source manifest already
+            // lists wasm/sql-wasm.wasm, build-meta.json, prompts, projects/*,
+            // and the three content-script JS bundles.
 
             writeFileSync(
                 resolve(DIST_DIR, "manifest.json"),
                 JSON.stringify(manifest, null, 2),
+            );
+        },
+    };
+}
+
+/**
+ * Hard-fails the build if wasm/sql-wasm.wasm is missing from the output.
+ *
+ * The SQLite WASM binary is the single most critical runtime asset — without
+ * it, the background service worker fails at boot (step "db-init") with a
+ * cryptic fetch error. We verify it landed in DIST_DIR before declaring the
+ * build complete so a misconfigured viteStaticCopy target or an emptyOutDir
+ * regression cannot ship a broken bundle silently.
+ */
+function verifyWasmAsset(): Plugin {
+    return {
+        name: "verify-wasm-asset",
+        // Use closeBundle so we run AFTER viteStaticCopy + copyManifest.
+        closeBundle() {
+            const wasmPath = resolve(DIST_DIR, "wasm", "sql-wasm.wasm");
+            const sourcePath = resolve(EXT_DIR, "node_modules", "sql.js", "dist", "sql-wasm.wasm");
+
+            if (existsSync(wasmPath)) {
+                return;
+            }
+
+            // Self-heal: copy directly from node_modules if viteStaticCopy didn't.
+            if (existsSync(sourcePath)) {
+                mkdirSync(resolve(DIST_DIR, "wasm"), { recursive: true });
+                copyFileSync(sourcePath, wasmPath);
+                console.log(`[verify-wasm-asset] Self-healed: copied sql-wasm.wasm to ${wasmPath}`);
+                return;
+            }
+
+            throw new Error(
+                [
+                    "[verify-wasm-asset] HARD ERROR — sql-wasm.wasm missing from build output.",
+                    `  expected at: ${wasmPath}`,
+                    `  source path: ${sourcePath} (also missing — run pnpm install)`,
+                    "  reason: SQLite cannot initialize without the WASM binary; the extension would fail at boot step 'db-init'.",
+                ].join("\n"),
             );
         },
     };
