@@ -80,19 +80,46 @@ async function loadSqlJs(): Promise<SqlJs> {
     } catch (err) {
         throw new Error(
             `Failed to fetch WASM binary at "${wasmUrl}". ` +
-            `Ensure "wasm/sql-wasm.wasm" exists in the extension dist folder. ` +
+            `Ensure "wasm/sql-wasm.wasm" exists in the chrome-extension/ build output ` +
+            `(viteStaticCopy target in vite.config.extension.ts copies it from node_modules/sql.js/dist). ` +
             `Original error: ${err instanceof Error ? err.message : String(err)}`,
         );
     }
     if (!wasmResponse.ok) {
         throw new Error(
             `WASM fetch returned HTTP ${wasmResponse.status} for "${wasmUrl}". ` +
-            `Ensure "wasm/sql-wasm.wasm" is listed in manifest web_accessible_resources.`,
+            `Ensure "wasm/sql-wasm.wasm" is listed in manifest.web_accessible_resources ` +
+            `and the file was copied to chrome-extension/wasm/ during the build.`,
         );
     }
-    const wasmBinary = await wasmResponse.arrayBuffer();
 
-    return initSqlJs({ wasmBinary });
+    let wasmBinary: ArrayBuffer;
+    try {
+        wasmBinary = await wasmResponse.arrayBuffer();
+    } catch (err) {
+        throw new Error(
+            `Failed to read WASM binary as ArrayBuffer from "${wasmUrl}". ` +
+            `Original error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+    }
+
+    if (wasmBinary.byteLength === 0) {
+        throw new Error(
+            `WASM binary at "${wasmUrl}" is empty (0 bytes). ` +
+            `The file exists but has no content — rebuild the extension to regenerate it.`,
+        );
+    }
+
+    try {
+        return await initSqlJs({ wasmBinary });
+    } catch (err) {
+        throw new Error(
+            `sql.js initSqlJs() factory failed after ${wasmBinary.byteLength}-byte WASM was fetched successfully. ` +
+            `This usually means the WASM binary is corrupted or incompatible with the sql.js JS shim version. ` +
+            `Run "pnpm install" to ensure node_modules/sql.js/dist/sql-wasm.wasm matches the installed sql.js version. ` +
+            `Original error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+    }
 }
 
 /** Attempts to load or create a DB from OPFS. */
