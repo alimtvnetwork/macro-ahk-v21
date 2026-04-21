@@ -371,7 +371,7 @@ export const HANDLER_REGISTRY = new Map<MessageType, MessageHandler>([
     [MessageType.SAVE_PROMPT, async (msg) => handleSavePrompt(msg)],
     [MessageType.DELETE_PROMPT, async (msg) => handleDeletePrompt(msg)],
     [MessageType.REORDER_PROMPTS, async (msg) => handleReorderPrompts(msg)],
-    [MessageType.RESEED_PROMPTS, async () => { const { reseedPrompts } = await import("./handlers/prompt-handler"); await reseedPrompts(); return { isOk: true }; }],
+    [MessageType.RESEED_PROMPTS, async () => { await reseedPrompts(); return { isOk: true }; }],
     [MessageType.GET_PROMPT_CHAINS, async () => handleGetPromptChains()],
     [MessageType.SAVE_PROMPT_CHAIN, async (msg) => handleSavePromptChain(msg)],
     [MessageType.DELETE_PROMPT_CHAIN, async (msg) => handleDeletePromptChain(msg)],
