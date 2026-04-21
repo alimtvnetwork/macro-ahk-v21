@@ -113,7 +113,11 @@ import {
     handleSavePrompt,
     handleDeletePrompt,
     handleReorderPrompts,
+    reseedPrompts,
 } from "./handlers/prompt-handler";
+
+import { cacheClearAll, cacheStats } from "./injection-cache";
+import { handleDynamicRequire } from "./handlers/dynamic-require-handler";
 
 import {
     handleGetPromptChains,
