@@ -14,7 +14,13 @@
 
 import type { SqlValue } from "@/background/handlers/handler-types";
 import initSqlJs, { type Database } from "sql.js";
-import JSZip from "jszip";
+import type JSZipType from "jszip";
+
+/** Lazy JSZip loader — keeps ~95 kB out of the options/popup chunk until import/export runs. */
+async function loadJSZip(): Promise<typeof JSZipType> {
+  const mod = await import("jszip");
+  return mod.default;
+}
 import { sendMessage } from "@/lib/message-client";
 import type {
   StoredProject,

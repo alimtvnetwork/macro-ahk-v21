@@ -99,7 +99,8 @@ export async function handleExportLogsZip(): Promise<{
 
 /** Builds the full ZIP bundle with logs, errors, and metadata. */
 async function buildZipBundle(): Promise<string> {
-    const zip = new JSZip();
+    const JSZipCtor = await loadJSZip();
+    const zip = new JSZipCtor();
 
     addJsonEntries(zip);
     addPlainTextLogs(zip);
