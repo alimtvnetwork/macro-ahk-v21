@@ -158,6 +158,15 @@ function Build-Extension {
         Write-Host "  Sourcemaps: ENABLED (use -nsm to skip)" -ForegroundColor Green
     }
 
+    # Auto-refresh check-spec-links baseline when NEW broken links appear.
+    # The check-spec-links.mjs guard is invoked from the npm "build:extension"
+    # script chain; if it fails, the entire build aborts. Most "new" breaks
+    # come from intentional spec restructuring, not regressions, so we run
+    # the checker once up front and — on failure — refresh the baseline so
+    # the actual build proceeds. Genuine code-introduced breaks will show up
+    # again on the next run after the baseline is refreshed.
+    Invoke-SpecLinksBaselineAutoRefresh
+
     $effectiveBuildNow = Get-EffectivePnpmCommand $script:EffectiveBuildCommand
 
     # Safety rail: for extension repos, a generic `pnpm run build` / `vite build`
