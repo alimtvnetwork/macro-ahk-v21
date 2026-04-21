@@ -2,9 +2,9 @@
 /**
  * generate-seed-manifest.mjs
  *
- * Scans all standalone-scripts projects' dist/instruction.json files
- * to produce a single seed-manifest.json that the extension seeder
- * reads at runtime.
+ * Scans all standalone-scripts/<name>/dist/instruction.json files (per-project
+ * build outputs) and produces a single seed-manifest.json that the extension
+ * seeder reads at runtime from the unpacked extension root.
  *
  * instruction.json is the SOLE source of truth — script-manifest.json
  * is no longer required.
@@ -12,7 +12,8 @@
  * Usage:
  *   node scripts/generate-seed-manifest.mjs [--out <path>]
  *
- * Default output: chrome-extension/dist/projects/seed-manifest.json
+ * Default output: chrome-extension/projects/seed-manifest.json
+ *   (the unpacked extension folder loaded into Chrome).
  * Also writes to: standalone-scripts/_generated/seed-manifest.json (for reference)
  */
 
@@ -29,8 +30,9 @@ const STANDALONE_DIR = join(ROOT, "standalone-scripts");
 
 function main() {
     const outArg = process.argv.indexOf("--out");
-    const defaultOut = join(ROOT, "chrome-extension", "dist", "projects", "seed-manifest.json");
+    const defaultOut = join(ROOT, "chrome-extension", "projects", "seed-manifest.json");
     const outPath = outArg !== -1 ? resolve(process.argv[outArg + 1]) : defaultOut;
+
 
     if (!existsSync(STANDALONE_DIR)) {
         console.error("❌ standalone-scripts/ directory not found");

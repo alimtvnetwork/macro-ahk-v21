@@ -3,11 +3,12 @@
   "projectName": "Marco Chrome Extension",
   "rootDir": ".",
   "extensionDir": ".",
-  "distDir": "dist",
+  "distDir": "chrome-extension",
   "buildCommand": "pnpm run build:extension",
   "devCommand": "pnpm run dev",
   "installCommand": "pnpm install --prod=false",
   "cleanPaths": [
+    "chrome-extension",
     "dist",
     "node_modules",
     ".vite",
@@ -33,3 +34,4 @@
     ]
   }
 }
+

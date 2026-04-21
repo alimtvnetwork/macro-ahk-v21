@@ -61,7 +61,7 @@ if (!existsSync(MANIFEST_PATH)) {
     "manifest.json existence",
     MANIFEST_PATH,
     "manifest.json file at repository root",
-    "Vite extension build requires manifest.json at the repo root — without it, the bundled extension dist/ will be missing its manifest entirely.",
+    "Vite extension build requires manifest.json at the repo root — without it, the bundled extension output (chrome-extension/) will be missing its manifest entirely.",
   );
 }
 

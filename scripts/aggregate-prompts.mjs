@@ -4,10 +4,11 @@
  *
  * Reads standalone-scripts/prompts/<seq>-<slug>/{info.json, prompt.md}
  * and produces:
- *   - dist/prompts/macro-prompts.json (single source of truth, copied to chrome-extension/dist/prompts/)
+ *   - chrome-extension/prompts/macro-prompts.json (single source of truth, lives
+ *     directly inside the unpacked extension folder loaded into Chrome).
  *
  * Run: node scripts/aggregate-prompts.mjs
- * Called by: run.ps1 -d (seeding phase)
+ * Called by: run.ps1 -d (seeding phase) and the Vite extension build's copy-prompts plugin.
  */
 
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -15,8 +16,9 @@ import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PROMPTS_DIR = join(ROOT, "standalone-scripts", "prompts");
-const DIST_PROMPTS_DIR = join(ROOT, "dist", "prompts");
+const DIST_PROMPTS_DIR = join(ROOT, "chrome-extension", "prompts");
 const OUTPUT = join(DIST_PROMPTS_DIR, "macro-prompts.json");
+
 
 
 async function main() {
