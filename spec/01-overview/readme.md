@@ -17,6 +17,7 @@
 | 08 | `10-features/` | PStore, automation, cross-project sync *(pending Task 9)* |
 | 09 | `11-imported/` | External/imported specs *(pending Task 10)* |
 | 10 | `12-prompts/` | Prompt samples and structure *(pending Task 11)* |
+| 11 | `18-release-installer/` | Two-channel installer model: pinned `release-version.{ps1,sh}` (release-only) vs latest `install.{ps1,sh}` |
 
 ## Related Documentation
 
