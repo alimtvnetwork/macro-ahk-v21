@@ -94,6 +94,64 @@ export function BootFailureBanner({ bootStep, bootError, bootErrorStack, bootErr
         </button>
       </div>
 
+      {/* ── Failing operation (SQL / migration step) ───────── */}
+      {ctx !== null && (ctx.sql !== null || ctx.migrationDescription !== null || ctx.scope !== null) ? (
+        <div className="rounded border border-destructive/30 bg-background/40 p-2 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Database className="h-3 w-3 text-destructive shrink-0" />
+              <span className="text-[11px] font-semibold text-destructive uppercase tracking-wide truncate">
+                Failing operation
+              </span>
+            </div>
+            {ctx.sql !== null ? (
+              <button
+                onClick={handleCopySql}
+                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border border-destructive/40 hover:bg-destructive/20 text-destructive transition-colors"
+                title="Copy failing SQL statement to clipboard"
+              >
+                {sqlCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {sqlCopied ? "Copied" : "Copy SQL"}
+              </button>
+            ) : null}
+          </div>
+
+          {/* Migration / scope metadata pills */}
+          <div className="flex flex-wrap gap-1.5 text-[10px]">
+            {ctx.migrationVersion !== null ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/30 text-destructive font-mono">
+                migration v{ctx.migrationVersion}
+              </span>
+            ) : null}
+            {ctx.migrationDescription !== null ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/30 text-destructive">
+                step: {ctx.migrationDescription}
+              </span>
+            ) : null}
+            {ctx.scope !== null ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/30 text-destructive font-mono">
+                scope: {ctx.scope}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Copyable failing-statement snippet */}
+          {ctx.sql !== null ? (
+            <div className="relative">
+              <div className="flex items-center gap-1 mb-1">
+                <Terminal className="h-3 w-3 text-destructive/70" />
+                <span className="text-[10px] font-medium text-destructive/70 uppercase tracking-wider">
+                  Failing statement
+                </span>
+              </div>
+              <pre className="text-[10px] font-mono text-destructive/90 bg-background/60 rounded p-2 overflow-x-auto max-h-40 whitespace-pre-wrap break-words border border-destructive/20">
+{ctx.sql}
+              </pre>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* ── Fix Steps ──────────────────────────────────────── */}
       <div className="rounded border border-destructive/30 bg-destructive/5 p-2">
         <div className="flex items-center gap-1.5 mb-1.5">
